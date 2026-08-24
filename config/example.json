@@ -1,0 +1,33 @@
+{
+  "schema": "goreecloud-gateway-config/v1",
+  "services": [
+    {
+      "id": "example-service",
+      "name": "Example Service",
+      "backend_ids": ["example-backend"]
+    }
+  ],
+  "routes": [
+    {
+      "id": "example-private-route",
+      "service_id": "example-service",
+      "hostname": "example.goreecloud.com",
+      "path_prefix": "/",
+      "methods": ["GET", "HEAD"],
+      "exposure": "private",
+      "enabled": false,
+      "tls": {
+        "mode": "required",
+        "certificate_profile": "default-private"
+      }
+    }
+  ],
+  "backends": [
+    {
+      "id": "example-backend",
+      "url": "http://127.0.0.1:8080",
+      "enabled": true,
+      "health_path": "/health"
+    }
+  ]
+}
