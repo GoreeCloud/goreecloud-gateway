@@ -33,6 +33,24 @@ def unique_ids(items, kind):
     return set(ids)
 
 
+def capability_ids_from_contract(contract):
+    entries = contract.get("capabilities", [])
+    if not isinstance(entries, list):
+        fail("capabilities must be an array")
+    ids = set()
+    for entry in entries:
+        if isinstance(entry, str):
+            capability_id = entry
+        elif isinstance(entry, dict):
+            capability_id = entry.get("id")
+        else:
+            fail("capability entries must be strings or objects with an id")
+        if not capability_id:
+            fail("capability entry has no id")
+        ids.add(capability_id)
+    return ids
+
+
 def main() -> None:
     schema = load_json(SCHEMA)
     config = load_json(EXAMPLE)
@@ -47,9 +65,8 @@ def main() -> None:
     routes = config.get("routes", [])
     backends = config.get("backends", [])
     service_ids = unique_ids(services, "services")
-    route_ids = unique_ids(routes, "routes")
+    unique_ids(routes, "routes")
     backend_ids = unique_ids(backends, "backends")
-    _ = route_ids
 
     for service in services:
         refs = service.get("backend_ids", [])
@@ -83,8 +100,15 @@ def main() -> None:
         if not (url.startswith("http://") or url.startswith("https://")):
             fail(f"backend {backend['id']} uses an unsupported URL")
 
-    capability_ids = {entry.get("id") for entry in capabilities.get("capabilities", [])}
-    required_caps = {"reverse-proxy", "https", "routing", "certificates", "configuration", "rollback"}
+    capability_ids = capability_ids_from_contract(capabilities)
+    required_caps = {
+        "http_reverse_proxy",
+        "https_termination",
+        "host_path_header_method_routing",
+        "certificate_inventory",
+        "configuration_validation",
+        "rollback",
+    }
     missing_caps = sorted(required_caps - capability_ids)
     if missing_caps:
         fail(f"capability contract is missing: {missing_caps}")
