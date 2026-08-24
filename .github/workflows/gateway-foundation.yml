@@ -1,0 +1,30 @@
+name: Gateway Native Foundation
+
+on:
+  push:
+    branches:
+      - main
+      - 'agent/**'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  foundation-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Validate JSON syntax
+        run: |
+          python -m json.tool capabilities.json >/dev/null
+          python -m json.tool config/gateway.schema.json >/dev/null
+          python -m json.tool config/example.json >/dev/null
+      - name: Validate Gateway Milestone 0 contract
+        run: python3 scripts/validate_gateway_foundation.py
