@@ -43,6 +43,10 @@ Gateway is authoritative for ingress and reverse-proxy behavior. GoreeCloud DNS 
 - `internal/platform` — Glaze UI, Wardveil Security, Privacy Shield, and Everkeep adapters
 - `internal/migration` — controlled import and compatibility tooling
 
+## Current development state
+
+Milestone 1 Proxy Core now includes ordered multi-backend route candidates, concurrent bounded health probes, fail-closed exclusion of unhealthy upstreams, and bounded retry/failover for safe idempotent requests on transport errors or HTTP 502/503/504 responses. Unsafe methods are not automatically replayed. These behaviors remain development-source capabilities and do not authorize production cutover.
+
 ## Development and release boundary
 
 Source implementation, CI success, isolated runtime validation, and production acceptance are separate states. No source change authorizes production cutover. Existing production Caddy remains authoritative until a later migration is explicitly validated and approved.
