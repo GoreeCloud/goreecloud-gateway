@@ -27,25 +27,28 @@ Gateway must integrate current Stable contracts for Glaze UI, Wardveil Security,
 
 ## Responsibility boundaries
 
-Gateway is authoritative for ingress and reverse-proxy behavior. GoreeCloud DNS / Beacon remains authoritative for DNS service and DNS policy. GoreeCloud Network / Conduit remains authoritative for private connectivity and network access policy. Identity remains authoritative for platform identity contracts. Destination applications retain application authorization. Monitor retains general service monitoring.
+Gateway is authoritative for ingress and reverse-proxy behavior only after an approved production cutover. GoreeCloud DNS / Beacon remains authoritative for DNS service and DNS policy. GoreeCloud Network / Conduit remains authoritative for private connectivity and network access policy. Identity remains authoritative for platform identity contracts. Destination applications retain application authorization. Monitor retains general service monitoring.
 
-## Native source architecture
+## Current native source architecture
 
-- `cmd/gateway` — service entry point
-- `internal/config` — typed configuration and validation
-- `internal/router` — deterministic route matching and priority
-- `internal/proxy` — HTTP reverse-proxy execution
-- `internal/upstream` — pools, balancing, health, retry, and failover
-- `internal/tls` — TLS policy and certificate lifecycle
-- `internal/policy` — middleware and request/response policy chains
-- `internal/api` — administration API
-- `internal/observability` — privacy-safe logs, metrics, diagnostics, and audit events
-- `internal/platform` — Glaze UI, Wardveil Security, Privacy Shield, and Everkeep adapters
-- `internal/migration` — controlled import and compatibility tooling
+- `cmd/gateway` — native service entry point and isolated listener lifecycle
+- `internal/config` — typed configuration loading and fail-closed validation
+- `internal/routing` — deterministic host, path-prefix, and method routing
+- `internal/health` — bounded backend health probes
+- `internal/proxy` — reverse-proxy execution, persistent health state, round-robin primary selection, bounded failover, streaming, upgraded connections, and transport limits
+- `config` — canonical schema and disabled example configuration
+- `docs` — architecture, security, and migration/development records
+- `scripts` — exact-source foundation validation
+
+Planned subsystems such as the TLS engine, control-plane API, discovery engine, observability layer, migration tooling, and complete Glaze UI / Wardveil Security / Privacy Shield / Everkeep adapters remain separate future implementation work and are not represented as complete by the current tree.
 
 ## Current development state
 
-Milestone 1 Proxy Core now includes ordered multi-backend route candidates, concurrent bounded health probes, fail-closed exclusion of unhealthy upstreams, and bounded retry/failover for safe idempotent requests on transport errors or HTTP 502/503/504 responses. Unsafe methods are not automatically replayed. These behaviors remain development-source capabilities and do not authorize production cutover.
+Milestone 1 Proxy Core includes ordered multi-backend route candidates, reusable backend health state with a cancellable background refresh loop, first-request health population for unknown state, fail-closed exclusion of unhealthy upstreams, service-scoped round-robin primary selection, and bounded retry/failover across at most three healthy candidates for safe GET, HEAD, and OPTIONS requests on transport errors or HTTP 502/503/504 responses. Unsafe or non-idempotent methods are not automatically replayed.
+
+The proxy transport now applies explicit dial, TLS-handshake, response-header, expect-continue, idle-connection, pool, per-host connection, and response-header-size bounds. Runtime tests cover early response streaming and upgraded bidirectional connection tunneling in addition to routing, failover, health-state reuse, balanced primary selection, no-healthy-backend failure, unsafe-method non-replay, and configuration reload behavior.
+
+These remain development-source capabilities. Full automatic HTTPS/ACME, production listener ownership, isolated target-host acceptance, persistent control-plane state, production observability, and migration/cutover acceptance remain pending.
 
 ## Development and release boundary
 
