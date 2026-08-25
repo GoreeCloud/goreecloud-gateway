@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -19,7 +20,7 @@ import (
 )
 
 const (
-	maxBackendAttempts   = 3
+	maxBackendAttempts    = 3
 	healthRefreshInterval = 10 * time.Second
 )
 
@@ -47,15 +48,20 @@ type Handler struct {
 
 func New(cfg *config.Config) *Handler {
 	healthCtx, healthStop := context.WithCancel(context.Background())
+	dialer := &net.Dialer{Timeout: 5 * time.Second, KeepAlive: 30 * time.Second}
 	handler := &Handler{
 		transport: &http.Transport{
-			Proxy:                 http.ProxyFromEnvironment,
-			ForceAttemptHTTP2:     true,
-			ResponseHeaderTimeout: 30 * time.Second,
-			IdleConnTimeout:       90 * time.Second,
-			MaxIdleConns:          256,
-			MaxIdleConnsPerHost:   32,
-			MaxConnsPerHost:       128,
+			Proxy:                   http.ProxyFromEnvironment,
+			DialContext:             dialer.DialContext,
+			ForceAttemptHTTP2:       true,
+			ResponseHeaderTimeout:   30 * time.Second,
+			TLSHandshakeTimeout:     10 * time.Second,
+			ExpectContinueTimeout:   1 * time.Second,
+			IdleConnTimeout:         90 * time.Second,
+			MaxIdleConns:            256,
+			MaxIdleConnsPerHost:     32,
+			MaxConnsPerHost:         128,
+			MaxResponseHeaderBytes:  1 << 20,
 		},
 		checker:     health.New(2 * time.Second),
 		healthState: make(map[string]cachedHealth),
@@ -78,7 +84,9 @@ func (h *Handler) Close() {
 
 func (h *Handler) Reload(cfg *config.Config) {
 	h.cfg.Store(cfg)
-	h.pruneHealthState(cfg)
+	h.healthMu.Lock()
+	clear(h.healthState)
+	h.healthMu.Unlock()
 }
 
 func (h *Handler) healthLoop() {
@@ -123,22 +131,6 @@ func (h *Handler) refreshBackends(ctx context.Context, backends []config.Backend
 	h.healthMu.Lock()
 	for i, result := range results {
 		h.healthState[candidates[i].ID] = cachedHealth{result: result, checkedAt: now}
-	}
-	h.healthMu.Unlock()
-}
-
-func (h *Handler) pruneHealthState(cfg *config.Config) {
-	valid := make(map[string]struct{}, len(cfg.Backends))
-	for _, backend := range cfg.Backends {
-		if backend.Enabled {
-			valid[backend.ID] = struct{}{}
-		}
-	}
-	h.healthMu.Lock()
-	for backendID := range h.healthState {
-		if _, ok := valid[backendID]; !ok {
-			delete(h.healthState, backendID)
-		}
 	}
 	h.healthMu.Unlock()
 }
