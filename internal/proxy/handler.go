@@ -18,37 +18,96 @@ import (
 	"github.com/GoreeCloud/goreecloud-gateway/internal/routing"
 )
 
-const maxBackendAttempts = 3
+const (
+	maxBackendAttempts   = 3
+	healthRefreshInterval = 10 * time.Second
+)
 
 type healthChecker interface {
 	Check(context.Context, config.Backend) health.Result
+}
+
+type cachedHealth struct {
+	result    health.Result
+	checkedAt time.Time
 }
 
 type Handler struct {
 	cfg       atomic.Pointer[config.Config]
 	transport http.RoundTripper
 	checker   healthChecker
+
+	healthMu    sync.RWMutex
+	healthState map[string]cachedHealth
+	healthCtx   context.Context
+	healthStop  context.CancelFunc
+
+	roundRobin sync.Map // service ID -> *atomic.Uint64
 }
 
 func New(cfg *config.Config) *Handler {
+	healthCtx, healthStop := context.WithCancel(context.Background())
 	handler := &Handler{
 		transport: &http.Transport{
 			Proxy:                 http.ProxyFromEnvironment,
 			ForceAttemptHTTP2:     true,
 			ResponseHeaderTimeout: 30 * time.Second,
 			IdleConnTimeout:       90 * time.Second,
+			MaxIdleConns:          256,
+			MaxIdleConnsPerHost:   32,
+			MaxConnsPerHost:       128,
 		},
-		checker: health.New(2 * time.Second),
+		checker:     health.New(2 * time.Second),
+		healthState: make(map[string]cachedHealth),
+		healthCtx:   healthCtx,
+		healthStop:  healthStop,
 	}
 	handler.cfg.Store(cfg)
+	go handler.healthLoop()
 	return handler
+}
+
+func (h *Handler) Close() {
+	if h.healthStop != nil {
+		h.healthStop()
+	}
+	if transport, ok := h.transport.(*http.Transport); ok {
+		transport.CloseIdleConnections()
+	}
 }
 
 func (h *Handler) Reload(cfg *config.Config) {
 	h.cfg.Store(cfg)
+	h.pruneHealthState(cfg)
 }
 
-func (h *Handler) healthyCandidates(ctx context.Context, candidates []config.Backend) []config.Backend {
+func (h *Handler) healthLoop() {
+	ticker := time.NewTicker(healthRefreshInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-h.healthCtx.Done():
+			return
+		case <-ticker.C:
+			cfg := h.cfg.Load()
+			if cfg != nil {
+				h.refreshBackends(h.healthCtx, cfg.Backends)
+			}
+		}
+	}
+}
+
+func (h *Handler) refreshBackends(ctx context.Context, backends []config.Backend) {
+	candidates := make([]config.Backend, 0, len(backends))
+	for _, backend := range backends {
+		if backend.Enabled {
+			candidates = append(candidates, backend)
+		}
+	}
+	if len(candidates) == 0 {
+		return
+	}
+
 	results := make([]health.Result, len(candidates))
 	var wg sync.WaitGroup
 	wg.Add(len(candidates))
@@ -60,15 +119,84 @@ func (h *Handler) healthyCandidates(ctx context.Context, candidates []config.Bac
 	}
 	wg.Wait()
 
-	healthy := make([]config.Backend, 0, len(candidates))
+	now := time.Now()
+	h.healthMu.Lock()
 	for i, result := range results {
-		if result.Healthy {
-			healthy = append(healthy, candidates[i])
+		h.healthState[candidates[i].ID] = cachedHealth{result: result, checkedAt: now}
+	}
+	h.healthMu.Unlock()
+}
+
+func (h *Handler) pruneHealthState(cfg *config.Config) {
+	valid := make(map[string]struct{}, len(cfg.Backends))
+	for _, backend := range cfg.Backends {
+		if backend.Enabled {
+			valid[backend.ID] = struct{}{}
+		}
+	}
+	h.healthMu.Lock()
+	for backendID := range h.healthState {
+		if _, ok := valid[backendID]; !ok {
+			delete(h.healthState, backendID)
+		}
+	}
+	h.healthMu.Unlock()
+}
+
+func (h *Handler) healthyCandidates(ctx context.Context, candidates []config.Backend) []config.Backend {
+	unknown := make([]config.Backend, 0, len(candidates))
+	healthyByID := make(map[string]bool, len(candidates))
+
+	h.healthMu.RLock()
+	for _, candidate := range candidates {
+		state, ok := h.healthState[candidate.ID]
+		if !ok {
+			unknown = append(unknown, candidate)
 			continue
 		}
-		slog.Warn("backend health check failed", "backend", candidates[i].ID, "status", result.StatusCode, "error", result.Err)
+		healthyByID[candidate.ID] = state.result.Healthy
+	}
+	h.healthMu.RUnlock()
+
+	if len(unknown) > 0 {
+		h.refreshBackends(ctx, unknown)
+		h.healthMu.RLock()
+		for _, candidate := range unknown {
+			state, ok := h.healthState[candidate.ID]
+			if ok {
+				healthyByID[candidate.ID] = state.result.Healthy
+			}
+		}
+		h.healthMu.RUnlock()
+	}
+
+	healthy := make([]config.Backend, 0, len(candidates))
+	for _, candidate := range candidates {
+		if healthyByID[candidate.ID] {
+			healthy = append(healthy, candidate)
+			continue
+		}
+		h.healthMu.RLock()
+		state, ok := h.healthState[candidate.ID]
+		h.healthMu.RUnlock()
+		if ok {
+			slog.Warn("backend excluded by health state", "backend", candidate.ID, "status", state.result.StatusCode, "error", state.result.Err)
+		}
 	}
 	return healthy
+}
+
+func (h *Handler) rotateCandidates(serviceID string, candidates []config.Backend) []config.Backend {
+	if len(candidates) < 2 {
+		return candidates
+	}
+	counterValue, _ := h.roundRobin.LoadOrStore(serviceID, &atomic.Uint64{})
+	counter := counterValue.(*atomic.Uint64)
+	offset := int((counter.Add(1) - 1) % uint64(len(candidates)))
+	rotated := make([]config.Backend, 0, len(candidates))
+	rotated = append(rotated, candidates[offset:]...)
+	rotated = append(rotated, candidates[:offset]...)
+	return rotated
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -89,6 +217,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "no healthy upstreams", http.StatusServiceUnavailable)
 		return
 	}
+	candidates = h.rotateCandidates(match.Service.ID, candidates)
 
 	first, err := url.Parse(candidates[0].URL)
 	if err != nil {
