@@ -18,6 +18,28 @@ func TestRequiredTLSRequiresCertificateProfile(t *testing.T) {
 	}
 }
 
+func TestRequiredTLSRejectsMissingOrDisabledCertificateProfile(t *testing.T) {
+	cfg := validConfig()
+	cfg.Routes[0].TLS.CertificateProfile = "missing"
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("missing certificate profile unexpectedly validated")
+	}
+
+	cfg = validConfig()
+	cfg.CertificateProfiles[0].Enabled = false
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("disabled certificate profile unexpectedly validated for required TLS route")
+	}
+}
+
+func TestEnabledCertificateProfileRequiresFileReferences(t *testing.T) {
+	cfg := validConfig()
+	cfg.CertificateProfiles[0].PrivateKeyFile = ""
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("enabled certificate profile without private-key file unexpectedly validated")
+	}
+}
+
 func TestDisabledTLSRejectsCertificateProfile(t *testing.T) {
 	cfg := validConfig()
 	cfg.Routes[0].TLS = RouteTLS{Mode: "disabled", CertificateProfile: "should-not-be-used"}
@@ -63,6 +85,12 @@ func validConfig() *Config {
 			ID:      "backend",
 			URL:     "http://127.0.0.1:8080",
 			Enabled: true,
+		}},
+		CertificateProfiles: []CertificateProfile{{
+			ID:              "default-private",
+			CertificateFile: "/run/goreecloud-gateway/tls/default-private.crt",
+			PrivateKeyFile:  "/run/goreecloud-gateway/tls/default-private.key",
+			Enabled:         true,
 		}},
 	}
 }
