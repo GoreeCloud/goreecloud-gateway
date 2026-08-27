@@ -39,7 +39,8 @@ func ResolveCandidates(cfg *config.Config, req *http.Request) (CandidateMatch, b
 	for _, route := range routes {
 		if !strings.EqualFold(host, route.Hostname) ||
 			!strings.HasPrefix(req.URL.Path, normalizedPrefix(route.PathPrefix)) ||
-			!methodAllowed(route.Methods, req.Method) {
+			!methodAllowed(route.Methods, req.Method) ||
+			!transportAllowed(route, req) {
 			continue
 		}
 
@@ -88,4 +89,11 @@ func methodAllowed(methods []string, method string) bool {
 		}
 	}
 	return false
+}
+
+func transportAllowed(route config.Route, req *http.Request) bool {
+	if route.TLS.Mode != "required" {
+		return true
+	}
+	return req.TLS != nil
 }
