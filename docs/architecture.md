@@ -6,6 +6,10 @@
 
 TLS termination and certificate selection occur at the listener boundary. Observability surrounds the request path without becoming authoritative for routing decisions.
 
+The canonical route model now carries an explicit TLS policy into the Go runtime instead of discarding the schema-defined `tls` object. Enabled routes must declare either `required` or `disabled`. A `required` route must identify a certificate profile, while a `disabled` route cannot carry an unused certificate profile.
+
+Request routing also fails closed for transport mismatch: a route with `tls.mode=required` is not eligible for a plaintext request. This prevents a route from being served over HTTP merely because certificate/listener lifecycle work is still being developed. Certificate-profile resolution and full listener lifecycle remain separate unfinished Milestone 1 work.
+
 ## Core capability families
 
 ### Gateway Routes
@@ -19,6 +23,8 @@ Named pools, weighted and least-connection strategies, active/passive health, re
 
 ### Gateway TLS
 SNI certificate selection, TLS policy, ACME account/certificate lifecycle, DNS-01 provider adapters, renewal, revocation, OCSP/status handling where applicable, certificate inventory, expiry alerts, and controlled manual-certificate support.
+
+The current source slice implements typed route TLS policy validation and request-time enforcement of the `required` transport boundary. It does not yet represent complete certificate-profile resolution, automatic certificate acquisition, renewal, SNI selection, or production listener management.
 
 ### Gateway Policy
 Composable request/response policy chains for headers, compression, redirects, authentication handoff, IP/network constraints, rate controls, request-size controls, CORS where explicitly configured, and security headers.
@@ -37,6 +43,7 @@ Parsers and import plans for approved Caddyfile, Traefik dynamic/static configur
 - Administration binds privately by default.
 - Public listeners expose only explicitly published routes.
 - Configuration validation fails closed on ambiguous or unsafe route state.
+- TLS-required routes are not matched for plaintext requests.
 - Secrets are referenced through protected runtime configuration and are never committed to source.
 - Access logging is minimized and configurable under Privacy Shield contracts.
 - Wardveil Security receives evidence-backed gateway state and events rather than unsupported protection claims.
