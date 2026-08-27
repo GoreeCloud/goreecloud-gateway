@@ -40,7 +40,7 @@
             "required": ["mode"],
             "properties": {
               "mode": {"enum": ["required", "disabled"]},
-              "certificate_profile": {"type": "string", "minLength": 1, "maxLength": 128}
+              "certificate_profile": {"$ref": "#/$defs/id"}
             }
           }
         }
@@ -57,6 +57,20 @@
           "url": {"type": "string", "pattern": "^https?://"},
           "enabled": {"type": "boolean"},
           "health_path": {"type": "string", "pattern": "^/"}
+        }
+      }
+    },
+    "certificate_profiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "certificate_file", "private_key_file", "enabled"],
+        "properties": {
+          "id": {"$ref": "#/$defs/id"},
+          "certificate_file": {"type": "string", "minLength": 1, "maxLength": 4096},
+          "private_key_file": {"type": "string", "minLength": 1, "maxLength": 4096},
+          "enabled": {"type": "boolean"}
         }
       }
     }
