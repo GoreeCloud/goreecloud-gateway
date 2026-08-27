@@ -8,10 +8,11 @@ import (
 )
 
 type Config struct {
-	Schema   string    `json:"schema"`
-	Services []Service `json:"services"`
-	Routes   []Route   `json:"routes"`
-	Backends []Backend `json:"backends"`
+	Schema              string               `json:"schema"`
+	Services            []Service            `json:"services"`
+	Routes              []Route              `json:"routes"`
+	Backends            []Backend            `json:"backends"`
+	CertificateProfiles []CertificateProfile `json:"certificate_profiles,omitempty"`
 }
 
 type Service struct {
@@ -34,6 +35,13 @@ type Route struct {
 type RouteTLS struct {
 	Mode               string `json:"mode"`
 	CertificateProfile string `json:"certificate_profile,omitempty"`
+}
+
+type CertificateProfile struct {
+	ID              string `json:"id"`
+	CertificateFile string `json:"certificate_file"`
+	PrivateKeyFile  string `json:"private_key_file"`
+	Enabled         bool   `json:"enabled"`
 }
 
 type Backend struct {
@@ -64,6 +72,23 @@ func (c *Config) Validate() error {
 	}
 	services := map[string]Service{}
 	backends := map[string]Backend{}
+	profiles := map[string]CertificateProfile{}
+
+	for _, profile := range c.CertificateProfiles {
+		if strings.TrimSpace(profile.ID) == "" {
+			return fmt.Errorf("certificate profile id is required")
+		}
+		if _, ok := profiles[profile.ID]; ok {
+			return fmt.Errorf("duplicate certificate profile %q", profile.ID)
+		}
+		if profile.Enabled {
+			if strings.TrimSpace(profile.CertificateFile) == "" || strings.TrimSpace(profile.PrivateKeyFile) == "" {
+				return fmt.Errorf("enabled certificate profile %q requires certificate and private-key file references", profile.ID)
+			}
+		}
+		profiles[profile.ID] = profile
+	}
+
 	for _, b := range c.Backends {
 		if b.ID == "" || b.URL == "" {
 			return fmt.Errorf("backend id and url are required")
@@ -103,8 +128,16 @@ func (c *Config) Validate() error {
 		}
 		switch r.TLS.Mode {
 		case "required":
-			if strings.TrimSpace(r.TLS.CertificateProfile) == "" {
+			profileID := strings.TrimSpace(r.TLS.CertificateProfile)
+			if profileID == "" {
 				return fmt.Errorf("route %q requires a TLS certificate profile", r.ID)
+			}
+			profile, ok := profiles[profileID]
+			if !ok {
+				return fmt.Errorf("route %q references missing certificate profile %q", r.ID, profileID)
+			}
+			if !profile.Enabled {
+				return fmt.Errorf("route %q references disabled certificate profile %q", r.ID, profileID)
 			}
 		case "disabled":
 			if strings.TrimSpace(r.TLS.CertificateProfile) != "" {
@@ -138,4 +171,13 @@ func (c *Config) Backend(id string) (Backend, bool) {
 		}
 	}
 	return Backend{}, false
+}
+
+func (c *Config) CertificateProfile(id string) (CertificateProfile, bool) {
+	for _, profile := range c.CertificateProfiles {
+		if profile.ID == id {
+			return profile, true
+		}
+	}
+	return CertificateProfile{}, false
 }
