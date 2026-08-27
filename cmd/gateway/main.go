@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,14 +14,13 @@ import (
 
 	"github.com/GoreeCloud/goreecloud-gateway/internal/config"
 	gatewayproxy "github.com/GoreeCloud/goreecloud-gateway/internal/proxy"
+	"github.com/GoreeCloud/goreecloud-gateway/internal/tlsconfig"
 )
 
 func main() {
 	configPath := flag.String("config", "config/example.json", "Gateway configuration path")
 	httpAddr := flag.String("http", "127.0.0.1:18080", "isolated HTTP development listener")
 	httpsAddr := flag.String("https", "", "optional isolated HTTPS listener")
-	certFile := flag.String("tls-cert", "", "TLS certificate for isolated HTTPS listener")
-	keyFile := flag.String("tls-key", "", "TLS private key for isolated HTTPS listener")
 	flag.Parse()
 
 	cfg, err := config.Load(*configPath)
@@ -36,16 +37,25 @@ func main() {
 		slog.Info("Gateway isolated HTTP listener starting", "address", *httpAddr)
 		errCh <- server.ListenAndServe()
 	}()
+
 	var tlsServer *http.Server
+	var tlsListener net.Listener
 	if *httpsAddr != "" {
-		if *certFile == "" || *keyFile == "" {
-			slog.Error("HTTPS listener requires both -tls-cert and -tls-key")
+		runtimeTLS, runtimeErr := tlsconfig.NewRuntime(cfg)
+		if runtimeErr != nil {
+			slog.Error("HTTPS listener certificate runtime rejected", "error", runtimeErr)
 			os.Exit(2)
 		}
+		baseListener, listenErr := net.Listen("tcp", *httpsAddr)
+		if listenErr != nil {
+			slog.Error("HTTPS listener bind failed", "error", listenErr)
+			os.Exit(2)
+		}
+		tlsListener = tls.NewListener(baseListener, runtimeTLS.TLSConfig())
 		tlsServer = &http.Server{Addr: *httpsAddr, Handler: handler, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 90 * time.Second}
 		go func() {
 			slog.Info("Gateway isolated HTTPS listener starting", "address", *httpsAddr)
-			errCh <- tlsServer.ListenAndServeTLS(*certFile, *keyFile)
+			errCh <- tlsServer.Serve(tlsListener)
 		}()
 	}
 
@@ -61,7 +71,7 @@ func main() {
 					continue
 				}
 				handler.Reload(next)
-				slog.Info("configuration reloaded")
+				slog.Info("configuration reloaded; listener certificate runtime remains unchanged until controlled listener reload is implemented")
 				continue
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
