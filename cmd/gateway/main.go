@@ -40,10 +40,11 @@ func main() {
 
 	var tlsServer *http.Server
 	var tlsListener net.Listener
+	var tlsReloader *tlsconfig.Reloader
 	if *httpsAddr != "" {
-		runtimeTLS, runtimeErr := tlsconfig.NewRuntime(cfg)
-		if runtimeErr != nil {
-			slog.Error("HTTPS listener certificate runtime rejected", "error", runtimeErr)
+		tlsReloader, err = tlsconfig.NewReloader(cfg)
+		if err != nil {
+			slog.Error("HTTPS listener certificate runtime rejected", "error", err)
 			os.Exit(2)
 		}
 		baseListener, listenErr := net.Listen("tcp", *httpsAddr)
@@ -51,7 +52,7 @@ func main() {
 			slog.Error("HTTPS listener bind failed", "error", listenErr)
 			os.Exit(2)
 		}
-		tlsListener = tls.NewListener(baseListener, runtimeTLS.TLSConfig())
+		tlsListener = tls.NewListener(baseListener, tlsReloader.TLSConfig())
 		tlsServer = &http.Server{Addr: *httpsAddr, Handler: handler, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 90 * time.Second}
 		go func() {
 			slog.Info("Gateway isolated HTTPS listener starting", "address", *httpsAddr)
@@ -69,23 +70,29 @@ func main() {
 				if loadErr != nil {
 					slog.Warn("reload rejected; retaining last known-good configuration", "error", loadErr)
 					continue
+			}
+			if tlsReloader != nil {
+				if reloadErr := tlsReloader.Reload(next); reloadErr != nil {
+					slog.Warn("TLS reload rejected; retaining complete last-known-good runtime", "error", reloadErr)
+					continue
 				}
-				handler.Reload(next)
-				slog.Info("configuration reloaded; listener certificate runtime remains unchanged until controlled listener reload is implemented")
-				continue
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			_ = server.Shutdown(ctx)
-			if tlsServer != nil {
-				_ = tlsServer.Shutdown(ctx)
-			}
-			cancel()
-			return
-		case serveErr := <-errCh:
-			if serveErr != nil && serveErr != http.ErrServerClosed {
-				slog.Error("listener failed", "error", serveErr)
-				os.Exit(1)
-			}
+			handler.Reload(next)
+			slog.Info("configuration and listener certificate runtime reloaded atomically from validated source")
+			continue
 		}
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		_ = server.Shutdown(ctx)
+		if tlsServer != nil {
+			_ = tlsServer.Shutdown(ctx)
+		}
+		cancel()
+		return
+	case serveErr := <-errCh:
+		if serveErr != nil && serveErr != http.ErrServerClosed {
+			slog.Error("listener failed", "error", serveErr)
+			os.Exit(1)
+		}
+	}
 	}
 }
