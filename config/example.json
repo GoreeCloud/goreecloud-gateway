@@ -29,5 +29,13 @@
       "enabled": true,
       "health_path": "/health"
     }
+  ],
+  "certificate_profiles": [
+    {
+      "id": "default-private",
+      "certificate_file": "/run/goreecloud-gateway/tls/default-private.crt",
+      "private_key_file": "/run/goreecloud-gateway/tls/default-private.key",
+      "enabled": false
+    }
   ]
 }
