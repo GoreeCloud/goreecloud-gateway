@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import hashlib
 import http.client
 import http.server
@@ -20,19 +21,60 @@ import time
 
 SCHEMA = "goreecloud-gateway-isolated-runtime-evidence/v1"
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
+LOAD_REQUESTS = 144
+MAX_BACKEND_CONCURRENCY = 128
+LOAD_HOLD_SECONDS = 0.15
 
 
 class Backend(http.server.BaseHTTPRequestHandler):
+    concurrency_lock = threading.Lock()
+    active_requests = 0
+    max_active_requests = 0
+
+    @classmethod
+    def reset_concurrency(cls) -> None:
+        with cls.concurrency_lock:
+            cls.active_requests = 0
+            cls.max_active_requests = 0
+
+    @classmethod
+    def begin_request(cls) -> None:
+        with cls.concurrency_lock:
+            cls.active_requests += 1
+            cls.max_active_requests = max(cls.max_active_requests, cls.active_requests)
+
+    @classmethod
+    def end_request(cls) -> None:
+        with cls.concurrency_lock:
+            cls.active_requests -= 1
+
+    @classmethod
+    def observed_concurrency(cls) -> int:
+        with cls.concurrency_lock:
+            return cls.max_active_requests
+
     def do_GET(self) -> None:  # noqa: N802 - stdlib handler contract
         if self.path == "/health":
             body = b"healthy\n"
-        else:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
+        Backend.begin_request()
+        try:
+            if self.path == "/load":
+                time.sleep(LOAD_HOLD_SECONDS)
             body = b"goreecloud-gateway-isolated-runtime\n"
-        self.send_response(200)
-        self.send_header("Content-Type", "text/plain")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        finally:
+            Backend.end_request()
 
     def do_HEAD(self) -> None:  # noqa: N802 - stdlib handler contract
         self.send_response(200)
@@ -56,8 +98,8 @@ def reserve_loopback_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def request(port: int, host: str, path: str = "/") -> tuple[int, bytes]:
-    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+def request(port: int, host: str, path: str = "/", timeout: float = 2) -> tuple[int, bytes]:
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=timeout)
     try:
         connection.request("GET", path, headers={"Host": host})
         response = connection.getresponse()
@@ -79,6 +121,31 @@ def wait_for_gateway(port: int, process: subprocess.Popen[bytes]) -> None:
             pass
         time.sleep(0.1)
     raise RuntimeError("Gateway loopback listener did not become ready")
+
+
+def exercise_bounded_load(port: int) -> tuple[int, int]:
+    Backend.reset_concurrency()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=LOAD_REQUESTS) as executor:
+        futures = [
+            executor.submit(request, port, "gateway.acceptance.test", "/load", 10)
+            for _ in range(LOAD_REQUESTS)
+        ]
+        responses = [future.result(timeout=15) for future in futures]
+
+    failed = [status for status, body in responses if status != 200 or body != b"goreecloud-gateway-isolated-runtime\n"]
+    if failed:
+        raise RuntimeError(f"bounded load produced {len(failed)} failed responses")
+
+    observed = Backend.observed_concurrency()
+    if observed <= 0:
+        raise RuntimeError("bounded load did not reach the isolated backend")
+    if observed > MAX_BACKEND_CONCURRENCY:
+        raise RuntimeError(
+            f"backend concurrency exceeded configured transport limit: observed={observed} limit={MAX_BACKEND_CONCURRENCY}"
+        )
+    if observed >= LOAD_REQUESTS:
+        raise RuntimeError("bounded load did not demonstrate upstream backpressure")
+    return len(responses), observed
 
 
 def main() -> None:
@@ -104,6 +171,10 @@ def main() -> None:
     graceful_shutdown = False
     route_proxy_validated = False
     unmatched_route_validated = False
+    bounded_load_validated = False
+    backpressure_validated = False
+    load_request_count = 0
+    max_observed_backend_concurrency = 0
     try:
         with tempfile.TemporaryDirectory(prefix="goreecloud-gateway-acceptance-") as temp:
             config_path = Path(temp) / "gateway.json"
@@ -162,6 +233,10 @@ def main() -> None:
                 raise RuntimeError(f"unmatched host returned {status}, expected 404")
             unmatched_route_validated = True
 
+            load_request_count, max_observed_backend_concurrency = exercise_bounded_load(gateway_port)
+            bounded_load_validated = load_request_count == LOAD_REQUESTS
+            backpressure_validated = max_observed_backend_concurrency <= MAX_BACKEND_CONCURRENCY
+
             process.send_signal(signal.SIGTERM)
             process.wait(timeout=10)
             if process.returncode != 0:
@@ -188,6 +263,11 @@ def main() -> None:
         "route_proxy_validated": route_proxy_validated,
         "unmatched_route_validated": unmatched_route_validated,
         "backend_health_validated": route_proxy_validated,
+        "bounded_load_validated": bounded_load_validated,
+        "backpressure_validated": backpressure_validated,
+        "load_request_count": load_request_count,
+        "configured_max_backend_concurrency": MAX_BACKEND_CONCURRENCY,
+        "max_observed_backend_concurrency": max_observed_backend_concurrency,
         "graceful_shutdown_validated": graceful_shutdown,
         "credentials_included": False,
         "production_cutover_authorized": False,
@@ -198,6 +278,8 @@ def main() -> None:
             route_proxy_validated,
             unmatched_route_validated,
             evidence["backend_health_validated"],
+            bounded_load_validated,
+            backpressure_validated,
             graceful_shutdown,
         )
     ):
