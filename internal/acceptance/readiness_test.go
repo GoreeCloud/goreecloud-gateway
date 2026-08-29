@@ -10,6 +10,9 @@ func TestEvaluateMigrationReadinessRequiresEveryGate(t *testing.T) {
 	evidence := completeMigrationEvidence()
 	evidence.BackupRestoreProven = false
 	evidence.WardveilSecurityValidated = false
+	evidence.MeshCoordinationValidated = false
+	evidence.IdentityIntegrationValidated = false
+	evidence.GovernanceIntegrationValidated = false
 
 	decision, err := EvaluateMigrationReadiness(evidence)
 	if err != nil {
@@ -21,8 +24,20 @@ func TestEvaluateMigrationReadinessRequiresEveryGate(t *testing.T) {
 	if decision.ProductionCutoverAuthorized {
 		t.Fatal("readiness decision unexpectedly authorized production cutover")
 	}
-	if len(decision.MissingGates) != 2 || decision.MissingGates[0] != "backup_restore_proven" || decision.MissingGates[1] != "wardveil_security_validated" {
-		t.Fatalf("missing gates = %v", decision.MissingGates)
+	want := []string{
+		"backup_restore_proven",
+		"wardveil_security_validated",
+		"mesh_coordination_validated",
+		"identity_integration_validated",
+		"governance_integration_validated",
+	}
+	if len(decision.MissingGates) != len(want) {
+		t.Fatalf("missing gates = %v, want %v", decision.MissingGates, want)
+	}
+	for i := range want {
+		if decision.MissingGates[i] != want[i] {
+			t.Fatalf("missing gates = %v, want %v", decision.MissingGates, want)
+		}
 	}
 }
 
@@ -57,24 +72,27 @@ func TestEvaluateMigrationReadinessRejectsInvalidIdentity(t *testing.T) {
 
 func completeMigrationEvidence() MigrationEvidence {
 	return MigrationEvidence{
-		Schema:                       MigrationEvidenceSchemaV1,
-		RecordedAt:                   time.Date(2026, 8, 29, 4, 0, 0, 0, time.UTC).Format(time.RFC3339Nano),
-		SourceRevision:               strings.Repeat("a", 40),
-		RuntimeArtifactSHA256:        strings.Repeat("b", 64),
-		ConfigurationValidated:       true,
-		RouteParityValidated:         true,
-		TLSRenewalRehearsalPassed:    true,
-		StreamingUpgradeValidated:    true,
-		SustainedLoadValidated:       true,
-		BackpressureValidated:        true,
-		BackupRestoreProven:          true,
-		RollbackRehearsed:            true,
-		ListenerOwnershipValidated:   true,
-		ObservabilityValidated:       true,
-		PrivacyShieldValidated:       true,
-		WardveilSecurityValidated:    true,
-		EverkeepValidated:            true,
-		GlazeUIStableValidated:       true,
-		ProductionCutoverAuthorized:  false,
+		Schema:                         MigrationEvidenceSchemaV1,
+		RecordedAt:                     time.Date(2026, 8, 29, 4, 0, 0, 0, time.UTC).Format(time.RFC3339Nano),
+		SourceRevision:                 strings.Repeat("a", 40),
+		RuntimeArtifactSHA256:          strings.Repeat("b", 64),
+		ConfigurationValidated:         true,
+		RouteParityValidated:          true,
+		TLSRenewalRehearsalPassed:     true,
+		StreamingUpgradeValidated:     true,
+		SustainedLoadValidated:        true,
+		BackpressureValidated:         true,
+		BackupRestoreProven:           true,
+		RollbackRehearsed:             true,
+		ListenerOwnershipValidated:    true,
+		ObservabilityValidated:        true,
+		PrivacyShieldValidated:        true,
+		WardveilSecurityValidated:     true,
+		EverkeepValidated:             true,
+		GlazeUIStableValidated:        true,
+		MeshCoordinationValidated:     true,
+		IdentityIntegrationValidated:  true,
+		GovernanceIntegrationValidated: true,
+		ProductionCutoverAuthorized:   false,
 	}
 }
