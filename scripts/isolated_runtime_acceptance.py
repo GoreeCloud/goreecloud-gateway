@@ -26,6 +26,12 @@ MAX_BACKEND_CONCURRENCY = 128
 LOAD_HOLD_SECONDS = 0.15
 
 
+class AcceptanceHTTPServer(http.server.ThreadingHTTPServer):
+    """Synthetic backend sized so its accept queue does not become the load-test bottleneck."""
+
+    request_queue_size = LOAD_REQUESTS
+
+
 class Backend(http.server.BaseHTTPRequestHandler):
     concurrency_lock = threading.Lock()
     active_requests = 0
@@ -205,7 +211,7 @@ def main() -> None:
     if not recovery_binary.is_file():
         raise SystemExit(f"Gateway recovery binary not found: {recovery_binary}")
 
-    backend = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Backend)
+    backend = AcceptanceHTTPServer(("127.0.0.1", 0), Backend)
     backend_port = int(backend.server_address[1])
     backend_thread = threading.Thread(target=backend.serve_forever, daemon=True)
     backend_thread.start()
