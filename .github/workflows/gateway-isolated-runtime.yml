@@ -27,12 +27,16 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-      - name: Build exact Gateway artifact
-        run: go build -trimpath -o /tmp/goreecloud-gateway ./cmd/gateway
+      - name: Build exact Gateway artifacts
+        run: |
+          set -euo pipefail
+          go build -trimpath -o /tmp/goreecloud-gateway ./cmd/gateway
+          go build -trimpath -o /tmp/goreecloud-gateway-recovery ./cmd/gateway-recovery
       - name: Run isolated runtime acceptance
         run: |
           python3 scripts/isolated_runtime_acceptance.py \
             --binary /tmp/goreecloud-gateway \
+            --recovery-binary /tmp/goreecloud-gateway-recovery \
             --evidence /tmp/goreecloud-gateway-evidence.json
           python3 -m json.tool /tmp/goreecloud-gateway-evidence.json >/dev/null
       - name: Upload sanitized runtime evidence
