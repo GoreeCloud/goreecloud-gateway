@@ -34,6 +34,9 @@ type MigrationEvidence struct {
 	WardveilSecurityValidated     bool   `json:"wardveil_security_validated"`
 	EverkeepValidated             bool   `json:"everkeep_validated"`
 	GlazeUIStableValidated        bool   `json:"glaze_ui_stable_validated"`
+	MeshCoordinationValidated     bool   `json:"mesh_coordination_validated"`
+	IdentityIntegrationValidated  bool   `json:"identity_integration_validated"`
+	GovernanceIntegrationValidated bool `json:"governance_integration_validated"`
 	ProductionCutoverAuthorized   bool   `json:"production_cutover_authorized"`
 }
 
@@ -84,6 +87,9 @@ func EvaluateMigrationReadiness(evidence MigrationEvidence) (MigrationDecision, 
 		{"wardveil_security_validated", evidence.WardveilSecurityValidated},
 		{"everkeep_validated", evidence.EverkeepValidated},
 		{"glaze_ui_stable_validated", evidence.GlazeUIStableValidated},
+		{"mesh_coordination_validated", evidence.MeshCoordinationValidated},
+		{"identity_integration_validated", evidence.IdentityIntegrationValidated},
+		{"governance_integration_validated", evidence.GovernanceIntegrationValidated},
 	}
 	for _, gate := range gates {
 		if !gate.pass {
