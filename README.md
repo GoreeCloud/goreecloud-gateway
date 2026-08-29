@@ -33,6 +33,8 @@ Gateway is authoritative for ingress and reverse-proxy behavior. GoreeCloud DNS 
 
 The current development branch contains the first-party Gateway runtime foundation, including typed configuration, deterministic routing, reverse proxying, streaming and upgraded-connection handling, reusable backend health state, health-aware failover, service-scoped round-robin selection, bounded upstream transport settings, last-known-good runtime reload behavior, and a privacy-safe aggregate runtime-status contract.
 
+The TLS lifecycle now includes explicit route-to-certificate-profile inventory, renewal eligibility/request validation, provider-neutral issuance, candidate validation, owner-protected staging, staged-bundle integrity verification, publication planning bound to the exact live serial, rollback-safe on-disk publication, controlled runtime activation, retained backup evidence, and an isolated full-cycle rehearsal boundary. The rehearsal boundary refuses live/staging/backup paths outside its explicitly supplied isolated root, activates only the rehearsal candidate, restores the prior pair and runtime, and always records `production_cutover_authorized=false`.
+
 The runtime-status contract is `goreecloud-gateway-runtime-status/v1`. It exposes aggregate counts for services, enabled routes, enabled backends, and healthy/unhealthy/unknown backend state while intentionally excluding hostnames, backend URLs, request data, headers, client identifiers, credentials, and other sensitive material. This is the source foundation for later Wardveil Security, Privacy Shield, Monitor, and Manager evidence adapters.
 
 ## Planned source architecture
@@ -42,7 +44,7 @@ The runtime-status contract is `goreecloud-gateway-runtime-status/v1`. It expose
 - `internal/routing` — deterministic route matching and priority
 - `internal/proxy` — HTTP reverse-proxy execution and privacy-safe runtime status
 - `internal/upstream` — future dedicated pools, balancing, health, retry, and failover subsystem
-- `internal/tls` — TLS policy and certificate lifecycle
+- `internal/tlsconfig` — TLS runtime, policy inventory, certificate lifecycle, transaction, activation, and isolated rehearsal controls
 - `internal/policy` — middleware and request/response policy chains
 - `internal/api` — administration API
 - `internal/observability` — privacy-safe logs, metrics, diagnostics, and audit events
@@ -51,4 +53,4 @@ The runtime-status contract is `goreecloud-gateway-runtime-status/v1`. It expose
 
 ## Development and release boundary
 
-Source implementation, CI success, isolated runtime validation, and production acceptance are separate states. No source change authorizes production cutover. Existing production Caddy remains authoritative until a later migration is explicitly validated and approved.
+Source implementation, CI success, isolated runtime validation, and production acceptance are separate states. The isolated renewal rehearsal operates only on paths inside its explicit rehearsal root and does not authorize live publication. No source change authorizes production cutover. Existing production Caddy remains authoritative until a later migration is explicitly validated and approved.
