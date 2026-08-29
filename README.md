@@ -39,6 +39,26 @@ The runtime-status contract is `goreecloud-gateway-runtime-status/v1`. It expose
 
 The migration-readiness contract is `goreecloud-gateway-migration-evidence/v1`. It is a fail-closed evidence evaluator bound to an exact source revision and immutable runtime-artifact SHA-256. It enumerates route parity, TLS rehearsal, streaming/upgraded connections, sustained load, backpressure, backup/restore, rollback, listener ownership, observability, Privacy Shield, Wardveil Security, Everkeep, and current-Stable Glaze UI validation. Even complete evidence can only make Gateway eligible for an explicitly approved migration rehearsal; the decision always keeps `production_cutover_authorized=false`.
 
+## Exact-source isolated runtime acceptance
+
+`.github/workflows/gateway-isolated-runtime.yml` builds the real `cmd/gateway` binary from the exact candidate revision, verifies the checked-out SHA, and runs `scripts/isolated_runtime_acceptance.py` entirely on loopback.
+
+The bounded exercise:
+
+- starts an isolated loopback backend with a health endpoint;
+- launches the actual Gateway binary on a loopback-only listener using temporary non-production configuration;
+- proves host-based route forwarding through the running process;
+- proves backend health participation in routing;
+- verifies an unmatched host remains unrouted with HTTP 404;
+- requests graceful process shutdown and requires a clean exit;
+- records the exact source revision and SHA-256 of the built Gateway artifact;
+- emits `goreecloud-gateway-isolated-runtime-evidence/v1` without credentials, production routes, hostnames, request contents, client identifiers, or other production data;
+- always records `production_cutover_authorized=false`.
+
+This workflow supplies bounded runtime evidence only. It does not prove production route parity, TLS ownership, sustained production-equivalent load, backup/restore, rollback, full platform integration, or migration approval.
+
+Both the native-foundation and isolated-runtime workflows explicitly check out and verify the exact pull-request head or push revision before validation. A synthetic merge revision is not accepted as source identity for these migration gates.
+
 ## Planned source architecture
 
 - `cmd/gateway` — service entry point
@@ -56,4 +76,4 @@ The migration-readiness contract is `goreecloud-gateway-migration-evidence/v1`. 
 
 ## Development and release boundary
 
-Source implementation, CI success, isolated runtime validation, migration-rehearsal eligibility, and production acceptance are separate states. The isolated renewal rehearsal operates only on paths inside its explicit rehearsal root and does not authorize live publication. The migration-readiness evaluator records missing acceptance gates but cannot authorize cutover. No source change authorizes production cutover. Existing production Caddy remains authoritative until a later migration is explicitly validated and approved.
+Source implementation, CI success, isolated runtime validation, migration-rehearsal eligibility, and production acceptance are separate states. The isolated renewal rehearsal operates only on paths inside its explicit rehearsal root and does not authorize live publication. The isolated runtime workflow operates only against temporary loopback configuration and is not a production deployment. The migration-readiness evaluator records missing acceptance gates but cannot authorize cutover. No source change authorizes production cutover. Existing production Caddy remains authoritative until a later migration is explicitly validated and approved.
