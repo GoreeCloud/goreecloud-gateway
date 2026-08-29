@@ -23,7 +23,7 @@ It is designed from the ground up as a GoreeCloud-owned product. Caddy, Traefik,
 
 ## Platform integrations
 
-Gateway must integrate current Stable contracts for Glaze UI, Wardveil Security, Privacy Shield, and Everkeep.
+Gateway must integrate current Stable contracts for Glaze UI, Wardveil Security, Privacy Shield, and Everkeep. The currently validated Glaze UI Stable baseline is 1.6.0; Candidate 2.0.0 is not accepted as the Stable migration baseline.
 
 ## Responsibility boundaries
 
@@ -37,6 +37,8 @@ The TLS lifecycle now includes explicit route-to-certificate-profile inventory, 
 
 The runtime-status contract is `goreecloud-gateway-runtime-status/v1`. It exposes aggregate counts for services, enabled routes, enabled backends, and healthy/unhealthy/unknown backend state while intentionally excluding hostnames, backend URLs, request data, headers, client identifiers, credentials, and other sensitive material. This is the source foundation for later Wardveil Security, Privacy Shield, Monitor, and Manager evidence adapters.
 
+The migration-readiness contract is `goreecloud-gateway-migration-evidence/v1`. It is a fail-closed evidence evaluator bound to an exact source revision and immutable runtime-artifact SHA-256. It enumerates route parity, TLS rehearsal, streaming/upgraded connections, sustained load, backpressure, backup/restore, rollback, listener ownership, observability, Privacy Shield, Wardveil Security, Everkeep, and current-Stable Glaze UI validation. Even complete evidence can only make Gateway eligible for an explicitly approved migration rehearsal; the decision always keeps `production_cutover_authorized=false`.
+
 ## Planned source architecture
 
 - `cmd/gateway` — service entry point
@@ -45,6 +47,7 @@ The runtime-status contract is `goreecloud-gateway-runtime-status/v1`. It expose
 - `internal/proxy` — HTTP reverse-proxy execution and privacy-safe runtime status
 - `internal/upstream` — future dedicated pools, balancing, health, retry, and failover subsystem
 - `internal/tlsconfig` — TLS runtime, policy inventory, certificate lifecycle, transaction, activation, and isolated rehearsal controls
+- `internal/acceptance` — fail-closed migration-readiness evidence and gate evaluation
 - `internal/policy` — middleware and request/response policy chains
 - `internal/api` — administration API
 - `internal/observability` — privacy-safe logs, metrics, diagnostics, and audit events
@@ -53,4 +56,4 @@ The runtime-status contract is `goreecloud-gateway-runtime-status/v1`. It expose
 
 ## Development and release boundary
 
-Source implementation, CI success, isolated runtime validation, and production acceptance are separate states. The isolated renewal rehearsal operates only on paths inside its explicit rehearsal root and does not authorize live publication. No source change authorizes production cutover. Existing production Caddy remains authoritative until a later migration is explicitly validated and approved.
+Source implementation, CI success, isolated runtime validation, migration-rehearsal eligibility, and production acceptance are separate states. The isolated renewal rehearsal operates only on paths inside its explicit rehearsal root and does not authorize live publication. The migration-readiness evaluator records missing acceptance gates but cannot authorize cutover. No source change authorizes production cutover. Existing production Caddy remains authoritative until a later migration is explicitly validated and approved.
