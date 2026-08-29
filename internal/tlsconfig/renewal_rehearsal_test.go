@@ -28,7 +28,7 @@ func TestRunIsolatedRenewalRehearsalRestoresPreviousPairAndRuntime(t *testing.T)
 		CurrentSerial: previousSerial,
 		DNSNames:      []string{"gateway.example.test"},
 		RequestedAt:   now.Format(time.RFC3339Nano),
-		Reason:        "isolated-renewal-rehearsal",
+		Reason:        "certificate-renewal-window-reached",
 	}
 	cfg := reloadConfig(oldCert, oldKey)
 	reloader, err := NewReloader(cfg)
@@ -81,7 +81,7 @@ func TestRunIsolatedRenewalRehearsalRejectsLivePathOutsideScope(t *testing.T) {
 		CurrentSerial: certificateSerialForTest(t, oldCert, oldKey),
 		DNSNames:      []string{"gateway.example.test"},
 		RequestedAt:   now.Format(time.RFC3339Nano),
-		Reason:        "isolated-renewal-rehearsal",
+		Reason:        "certificate-renewal-window-reached",
 	}
 	cfg := reloadConfig(oldCert, oldKey)
 	reloader, err := NewReloader(cfg)
