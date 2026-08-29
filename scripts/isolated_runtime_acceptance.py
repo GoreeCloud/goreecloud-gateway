@@ -123,6 +123,28 @@ def wait_for_gateway(port: int, process: subprocess.Popen[bytes]) -> None:
     raise RuntimeError("Gateway loopback listener did not become ready")
 
 
+def wait_for_route(port: int, process: subprocess.Popen[bytes], active_host: str, inactive_host: str) -> None:
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            raise RuntimeError(f"Gateway exited during configuration recovery with code {process.returncode}")
+        try:
+            active_status, active_body = request(port, active_host, "/recovery-probe")
+            inactive_status, _ = request(port, inactive_host, "/recovery-probe")
+            if (
+                active_status == 200
+                and active_body == b"goreecloud-gateway-isolated-runtime\n"
+                and inactive_status == 404
+            ):
+                return
+        except (ConnectionError, OSError):
+            pass
+        time.sleep(0.1)
+    raise RuntimeError(
+        f"Gateway configuration transition did not converge: active={active_host} inactive={inactive_host}"
+    )
+
+
 def exercise_bounded_load(port: int) -> tuple[int, int]:
     Backend.reset_concurrency()
     with concurrent.futures.ThreadPoolExecutor(max_workers=LOAD_REQUESTS) as executor:
@@ -148,9 +170,28 @@ def exercise_bounded_load(port: int) -> tuple[int, int]:
     return len(responses), observed
 
 
+def run_recovery(recovery_binary: Path, *arguments: str) -> dict[str, object]:
+    completed = subprocess.run(
+        [str(recovery_binary), *arguments],
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=10,
+    )
+    try:
+        result = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Gateway recovery command returned invalid JSON: {completed.stdout!r}") from exc
+    if not isinstance(result, dict):
+        raise RuntimeError("Gateway recovery command did not return a JSON object")
+    return result
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--binary", required=True, type=Path)
+    parser.add_argument("--recovery-binary", required=True, type=Path)
     parser.add_argument("--evidence", required=True, type=Path)
     args = parser.parse_args()
 
@@ -158,8 +199,11 @@ def main() -> None:
     if not HEX40.fullmatch(source_revision):
         raise SystemExit("GOREECLOUD_GATEWAY_SOURCE_REVISION must be an exact 40-character commit SHA")
     binary = args.binary.resolve()
+    recovery_binary = args.recovery_binary.resolve()
     if not binary.is_file():
         raise SystemExit(f"Gateway binary not found: {binary}")
+    if not recovery_binary.is_file():
+        raise SystemExit(f"Gateway recovery binary not found: {recovery_binary}")
 
     backend = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Backend)
     backend_port = int(backend.server_address[1])
@@ -173,11 +217,17 @@ def main() -> None:
     unmatched_route_validated = False
     bounded_load_validated = False
     backpressure_validated = False
+    backup_restore_validated = False
+    rollback_rehearsed = False
+    recovery_compare_and_swap_validated = False
     load_request_count = 0
     max_observed_backend_concurrency = 0
+    snapshot_config_sha256 = ""
     try:
         with tempfile.TemporaryDirectory(prefix="goreecloud-gateway-acceptance-") as temp:
-            config_path = Path(temp) / "gateway.json"
+            recovery_root = Path(temp)
+            config_path = recovery_root / "active" / "gateway.json"
+            config_path.parent.mkdir(mode=0o700)
             config = {
                 "schema": "goreecloud-gateway-config/v1",
                 "services": [
@@ -237,6 +287,72 @@ def main() -> None:
             bounded_load_validated = load_request_count == LOAD_REQUESTS
             backpressure_validated = max_observed_backend_concurrency <= MAX_BACKEND_CONCURRENCY
 
+            snapshot_output = run_recovery(
+                recovery_binary,
+                "-action",
+                "snapshot",
+                "-root",
+                str(recovery_root),
+                "-config",
+                str(config_path),
+                "-source-revision",
+                source_revision,
+            )
+            snapshot = snapshot_output.get("snapshot")
+            snapshot_dir = snapshot_output.get("snapshot_dir")
+            if not isinstance(snapshot, dict) or not isinstance(snapshot_dir, str):
+                raise RuntimeError("Gateway recovery snapshot output is incomplete")
+            snapshot_config_sha256 = str(snapshot.get("config_sha256", ""))
+            if snapshot.get("production_cutover_authorized") is not False or not re.fullmatch(
+                r"[0-9a-f]{64}", snapshot_config_sha256
+            ):
+                raise RuntimeError("Gateway recovery snapshot safety evidence is invalid")
+
+            changed_config = json.loads(json.dumps(config))
+            changed_config["routes"][0]["hostname"] = "gateway.changed.acceptance.test"
+            config_path.write_text(json.dumps(changed_config), encoding="utf-8")
+            changed_config_sha256 = sha256(config_path)
+            process.send_signal(signal.SIGHUP)
+            wait_for_route(
+                gateway_port,
+                process,
+                "gateway.changed.acceptance.test",
+                "gateway.acceptance.test",
+            )
+
+            restore_receipt = run_recovery(
+                recovery_binary,
+                "-action",
+                "restore",
+                "-root",
+                str(recovery_root),
+                "-config",
+                str(config_path),
+                "-snapshot",
+                snapshot_dir,
+                "-expected-current-sha256",
+                changed_config_sha256,
+            )
+            if restore_receipt.get("production_cutover_authorized") is not False:
+                raise RuntimeError("Gateway recovery receipt authorized production cutover")
+            if restore_receipt.get("restored_config_sha256") != snapshot_config_sha256:
+                raise RuntimeError("Gateway recovery receipt does not match the prepared snapshot")
+            if restore_receipt.get("config_validated") is not True:
+                raise RuntimeError("Gateway recovery did not validate the restored configuration")
+            if restore_receipt.get("compare_and_swap_validated") is not True:
+                raise RuntimeError("Gateway recovery did not enforce compare-and-swap rollback protection")
+            recovery_compare_and_swap_validated = True
+            backup_restore_validated = True
+
+            process.send_signal(signal.SIGHUP)
+            wait_for_route(
+                gateway_port,
+                process,
+                "gateway.acceptance.test",
+                "gateway.changed.acceptance.test",
+            )
+            rollback_rehearsed = True
+
             process.send_signal(signal.SIGTERM)
             process.wait(timeout=10)
             if process.returncode != 0:
@@ -258,6 +374,7 @@ def main() -> None:
         "schema": SCHEMA,
         "source_revision": source_revision,
         "runtime_artifact_sha256": sha256(binary),
+        "recovery_artifact_sha256": sha256(recovery_binary),
         "listener_scope": "127.0.0.1",
         "loopback_listener_validated": True,
         "route_proxy_validated": route_proxy_validated,
@@ -268,6 +385,10 @@ def main() -> None:
         "load_request_count": load_request_count,
         "configured_max_backend_concurrency": MAX_BACKEND_CONCURRENCY,
         "max_observed_backend_concurrency": max_observed_backend_concurrency,
+        "backup_restore_validated": backup_restore_validated,
+        "rollback_rehearsed": rollback_rehearsed,
+        "recovery_compare_and_swap_validated": recovery_compare_and_swap_validated,
+        "snapshot_config_sha256": snapshot_config_sha256,
         "graceful_shutdown_validated": graceful_shutdown,
         "credentials_included": False,
         "production_cutover_authorized": False,
@@ -280,6 +401,9 @@ def main() -> None:
             evidence["backend_health_validated"],
             bounded_load_validated,
             backpressure_validated,
+            backup_restore_validated,
+            rollback_rehearsed,
+            recovery_compare_and_swap_validated,
             graceful_shutdown,
         )
     ):
