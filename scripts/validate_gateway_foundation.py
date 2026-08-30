@@ -8,6 +8,9 @@ SCHEMA = ROOT / "config" / "gateway.schema.json"
 EXAMPLE = ROOT / "config" / "example.json"
 CAPABILITIES = ROOT / "capabilities.json"
 THREAT_MODEL = ROOT / "docs" / "security" / "threat-model.md"
+PARITY_SOURCE = ROOT / "internal" / "config" / "parity.go"
+PARITY_TEST = ROOT / "internal" / "config" / "parity_test.go"
+PARITY_DOC = ROOT / "docs" / "configuration-parity.md"
 
 
 def fail(message: str) -> None:
@@ -22,6 +25,15 @@ def load_json(path: Path):
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         fail(f"cannot parse {path.relative_to(ROOT)}: {exc}")
+
+
+def require_markers(path: Path, markers) -> None:
+    if not path.is_file():
+        fail(f"missing required file: {path.relative_to(ROOT)}")
+    text = path.read_text(encoding="utf-8")
+    for marker in markers:
+        if marker not in text:
+            fail(f"{path.relative_to(ROOT)} missing required marker: {marker}")
 
 
 def unique_ids(items, kind):
@@ -119,6 +131,26 @@ def main() -> None:
     for marker in ["listener ownership", "unsafe public exposure", "last known-good", "sensitive headers", "Caddy"]:
         if marker.lower() not in threat_text.lower():
             fail(f"threat model missing required boundary: {marker}")
+
+    require_markers(PARITY_SOURCE, [
+        "goreecloud-gateway-config-parity-evidence/v1",
+        "ConfigParityFingerprint",
+        "BuildConfigParityEvidence",
+        "ValidateConfigParityEvidence",
+        "ProductionCutoverAuthorized",
+    ])
+    require_markers(PARITY_TEST, [
+        "TestConfigParityFingerprintIsOrderIndependent",
+        "TestConfigParityFingerprintChangesWithRouteSemantics",
+        "TestBuildAndValidateConfigParityEvidence",
+        "TestValidateConfigParityEvidenceRejectsMismatchAndCutover",
+    ])
+    require_markers(PARITY_DOC, [
+        "independently reviewed",
+        "SHA-256",
+        "production cutover",
+        "Caddy",
+    ])
 
     print("gateway-foundation: PASS")
 
