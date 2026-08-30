@@ -20,8 +20,9 @@ import (
 )
 
 const (
-	maxBackendAttempts    = 3
-	healthRefreshInterval = 10 * time.Second
+	maxBackendAttempts     = 3
+	maxBackendConcurrency  = 128
+	healthRefreshInterval  = 10 * time.Second
 )
 
 type healthChecker interface {
@@ -49,20 +50,21 @@ type Handler struct {
 func New(cfg *config.Config) *Handler {
 	healthCtx, healthStop := context.WithCancel(context.Background())
 	dialer := &net.Dialer{Timeout: 5 * time.Second, KeepAlive: 30 * time.Second}
+	baseTransport := &http.Transport{
+		Proxy:                  http.ProxyFromEnvironment,
+		DialContext:            dialer.DialContext,
+		ForceAttemptHTTP2:      true,
+		ResponseHeaderTimeout:  30 * time.Second,
+		TLSHandshakeTimeout:    10 * time.Second,
+		ExpectContinueTimeout:  1 * time.Second,
+		IdleConnTimeout:        90 * time.Second,
+		MaxIdleConns:           256,
+		MaxIdleConnsPerHost:    32,
+		MaxConnsPerHost:        maxBackendConcurrency,
+		MaxResponseHeaderBytes: 1 << 20,
+	}
 	handler := &Handler{
-		transport: &http.Transport{
-			Proxy:                   http.ProxyFromEnvironment,
-			DialContext:             dialer.DialContext,
-			ForceAttemptHTTP2:       true,
-			ResponseHeaderTimeout:   30 * time.Second,
-			TLSHandshakeTimeout:     10 * time.Second,
-			ExpectContinueTimeout:   1 * time.Second,
-			IdleConnTimeout:         90 * time.Second,
-			MaxIdleConns:            256,
-			MaxIdleConnsPerHost:     32,
-			MaxConnsPerHost:         128,
-			MaxResponseHeaderBytes:  1 << 20,
-		},
+		transport:   newBackendLimitedTransport(baseTransport, maxBackendConcurrency),
 		checker:     health.New(2 * time.Second),
 		healthState: make(map[string]cachedHealth),
 		healthCtx:   healthCtx,
@@ -77,7 +79,7 @@ func (h *Handler) Close() {
 	if h.healthStop != nil {
 		h.healthStop()
 	}
-	if transport, ok := h.transport.(*http.Transport); ok {
+	if transport, ok := h.transport.(interface{ CloseIdleConnections() }); ok {
 		transport.CloseIdleConnections()
 	}
 }
