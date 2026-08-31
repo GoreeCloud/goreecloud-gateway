@@ -51,7 +51,16 @@ func (t *backendLimitedTransport) RoundTrip(req *http.Request) (*http.Response, 
 		release()
 		return nil, errors.New("gateway proxy: backend transport returned a response without a body")
 	}
-	response.Body = &releaseOnCloseBody{ReadCloser: response.Body, release: release}
+
+	// net/http represents a successful protocol upgrade with a response body
+	// that is also writable. ReverseProxy requires that io.ReadWriteCloser
+	// contract to tunnel upgraded traffic. Preserve it while still holding the
+	// concurrency slot until the upgraded connection closes.
+	if readWriteBody, ok := response.Body.(io.ReadWriteCloser); ok {
+		response.Body = &releaseOnCloseReadWriteBody{ReadWriteCloser: readWriteBody, release: release}
+	} else {
+		response.Body = &releaseOnCloseBody{ReadCloser: response.Body, release: release}
+	}
 	return response, nil
 }
 
@@ -77,6 +86,26 @@ func (b *releaseOnCloseBody) Read(p []byte) (int, error) {
 
 func (b *releaseOnCloseBody) Close() error {
 	err := b.ReadCloser.Close()
+	b.once.Do(b.release)
+	return err
+}
+
+type releaseOnCloseReadWriteBody struct {
+	io.ReadWriteCloser
+	once    sync.Once
+	release func()
+}
+
+func (b *releaseOnCloseReadWriteBody) Read(p []byte) (int, error) {
+	n, err := b.ReadWriteCloser.Read(p)
+	if err == io.EOF {
+		b.once.Do(b.release)
+	}
+	return n, err
+}
+
+func (b *releaseOnCloseReadWriteBody) Close() error {
+	err := b.ReadWriteCloser.Close()
 	b.once.Do(b.release)
 	return err
 }
