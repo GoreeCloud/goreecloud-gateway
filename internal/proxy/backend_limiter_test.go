@@ -18,6 +18,23 @@ func (fn roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error)
 	return fn(request)
 }
 
+type testReadWriteCloser struct {
+	reader *bytes.Reader
+	writes bytes.Buffer
+}
+
+func (b *testReadWriteCloser) Read(p []byte) (int, error) {
+	return b.reader.Read(p)
+}
+
+func (b *testReadWriteCloser) Write(p []byte) (int, error) {
+	return b.writes.Write(p)
+}
+
+func (b *testReadWriteCloser) Close() error {
+	return nil
+}
+
 func TestBackendLimitedTransportBoundsResponseLifetimeConcurrency(t *testing.T) {
 	var active atomic.Int64
 	var maxActive atomic.Int64
@@ -85,6 +102,39 @@ func TestBackendLimitedTransportBoundsResponseLifetimeConcurrency(t *testing.T) 
 
 	if maxActive.Load() > 2 {
 		t.Fatalf("base transport concurrency = %d, want <= 2", maxActive.Load())
+	}
+}
+
+func TestBackendLimitedTransportPreservesUpgradeReadWriteBody(t *testing.T) {
+	upgradeBody := &testReadWriteCloser{reader: bytes.NewReader([]byte("server-data"))}
+	transport := newBackendLimitedTransport(roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusSwitchingProtocols,
+			Body:       upgradeBody,
+			Request:    request,
+		}, nil
+	}), 1)
+
+	request := (&http.Request{
+		Method: http.MethodGet,
+		URL:    &url.URL{Scheme: "http", Host: "backend.example"},
+	}).WithContext(context.Background())
+	response, err := transport.RoundTrip(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	readWriteBody, ok := response.Body.(io.ReadWriteCloser)
+	if !ok {
+		t.Fatalf("upgrade body type %T does not preserve io.ReadWriteCloser", response.Body)
+	}
+	if _, err := readWriteBody.Write([]byte("client-data")); err != nil {
+		t.Fatal(err)
+	}
+	if got := upgradeBody.writes.String(); got != "client-data" {
+		t.Fatalf("upgrade write=%q, want %q", got, "client-data")
+	}
+	if err := readWriteBody.Close(); err != nil {
+		t.Fatal(err)
 	}
 }
 
