@@ -75,7 +75,7 @@ func validateRoute(route Route) error {
 		}
 		for _, raw := range route.AllowedCIDRs {
 			prefix, err := netip.ParsePrefix(raw)
-			if err != nil || prefix.String() != raw {
+			if err != nil || prefix.Masked().String() != raw {
 				return fmt.Errorf("invalid canonical allowed CIDR %q", raw)
 			}
 		}
