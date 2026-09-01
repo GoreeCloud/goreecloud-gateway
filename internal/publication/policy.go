@@ -73,11 +73,16 @@ func validateRoute(route Route) error {
 		if len(route.AllowedCIDRs) == 0 {
 			return errors.New("private route requires at least one allowed CIDR")
 		}
+		seenCIDRs := make(map[string]struct{}, len(route.AllowedCIDRs))
 		for _, raw := range route.AllowedCIDRs {
 			prefix, err := netip.ParsePrefix(raw)
 			if err != nil || prefix.Masked().String() != raw {
 				return fmt.Errorf("invalid canonical allowed CIDR %q", raw)
 			}
+			if _, ok := seenCIDRs[raw]; ok {
+				return fmt.Errorf("duplicate allowed CIDR %q", raw)
+			}
+			seenCIDRs[raw] = struct{}{}
 		}
 	default:
 		return fmt.Errorf("unsupported exposure %q", route.Exposure)
@@ -110,6 +115,10 @@ func validateHostname(host string) error {
 }
 
 func validateUpstream(raw string) error {
+	if raw == "" || strings.ContainsAny(raw, " \t\r\n{}\"") {
+		return errors.New("upstream must be a single safe URL token")
+	}
+
 	u, err := url.Parse(raw)
 	if err != nil {
 		return errors.New("upstream must be a valid URL")
