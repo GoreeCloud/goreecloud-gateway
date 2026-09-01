@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/GoreeCloud/goreecloud-gateway/internal/publication"
 	"github.com/GoreeCloud/goreecloud-gateway/internal/status"
 )
 
@@ -17,6 +18,18 @@ func main() {
 	listenAddress := os.Getenv("GOREECLOUD_GATEWAY_LISTEN")
 	if listenAddress == "" {
 		listenAddress = defaultListenAddress
+	}
+
+	if path := os.Getenv("GOREECLOUD_GATEWAY_PUBLICATION_FILE"); path != "" {
+		plan, err := publication.LoadPlanFile(path)
+		if err != nil {
+			log.Fatalf("publication policy rejected: %v", err)
+		}
+		log.Printf(
+			"validated publication policy: routes=%d authority=%s; data-plane mutation disabled",
+			len(plan.Routes),
+			plan.DataPlaneAuthority,
+		)
 	}
 
 	if path := os.Getenv("GOREECLOUD_GATEWAY_STATUS_FILE"); path != "" {
