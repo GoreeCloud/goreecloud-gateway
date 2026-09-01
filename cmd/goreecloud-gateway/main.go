@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/GoreeCloud/goreecloud-gateway/internal/status"
@@ -21,7 +20,7 @@ func main() {
 	}
 
 	if path := os.Getenv("GOREECLOUD_GATEWAY_STATUS_FILE"); path != "" {
-		if err := writeStatusFile(path, status.DevelopmentSnapshot(time.Now())); err != nil {
+		if err := status.WriteFile(path, status.DevelopmentSnapshot(time.Now())); err != nil {
 			log.Fatalf("write status file: %v", err)
 		}
 	}
@@ -62,19 +61,4 @@ func writeJSON(w http.ResponseWriter, value any) {
 	if err := json.NewEncoder(w).Encode(value); err != nil {
 		log.Printf("encode response: %v", err)
 	}
-}
-
-func writeStatusFile(path string, snapshot status.Snapshot) error {
-	payload, err := json.MarshalIndent(snapshot, "", "  ")
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-		return err
-	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, append(payload, '\n'), 0o640); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
 }
