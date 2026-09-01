@@ -9,9 +9,10 @@ import (
 )
 
 // backendLimitedTransport adds an explicit per-upstream concurrency boundary on
-// top of net/http's connection limits. A slot remains held for the lifetime of
-// the response body, so streaming responses cannot let a later request exceed
-// the configured in-flight backend ceiling.
+// top of net/http's connection limits. A slot remains held until the response
+// body is closed, which is the RoundTripper ownership boundary. In particular,
+// reading EOF must not release the slot early: the upstream handler can still
+// be completing request teardown after the final response byte is observed.
 type backendLimitedTransport struct {
 	base http.RoundTripper
 	max  int
@@ -76,14 +77,6 @@ type releaseOnCloseBody struct {
 	release func()
 }
 
-func (b *releaseOnCloseBody) Read(p []byte) (int, error) {
-	n, err := b.ReadCloser.Read(p)
-	if err == io.EOF {
-		b.once.Do(b.release)
-	}
-	return n, err
-}
-
 func (b *releaseOnCloseBody) Close() error {
 	err := b.ReadCloser.Close()
 	b.once.Do(b.release)
@@ -94,14 +87,6 @@ type releaseOnCloseReadWriteBody struct {
 	io.ReadWriteCloser
 	once    sync.Once
 	release func()
-}
-
-func (b *releaseOnCloseReadWriteBody) Read(p []byte) (int, error) {
-	n, err := b.ReadWriteCloser.Read(p)
-	if err == io.EOF {
-		b.once.Do(b.release)
-	}
-	return n, err
 }
 
 func (b *releaseOnCloseReadWriteBody) Close() error {
