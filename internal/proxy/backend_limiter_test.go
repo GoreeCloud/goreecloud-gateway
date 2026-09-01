@@ -105,6 +105,75 @@ func TestBackendLimitedTransportBoundsResponseLifetimeConcurrency(t *testing.T) 
 	}
 }
 
+func TestBackendLimitedTransportDoesNotReleaseSlotOnEOF(t *testing.T) {
+	started := make(chan struct{}, 2)
+	base := roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		started <- struct{}{}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader([]byte("ok"))),
+			Request:    request,
+		}, nil
+	})
+	transport := newBackendLimitedTransport(base, 1)
+	newRequest := func() *http.Request {
+		return (&http.Request{
+			Method: http.MethodGet,
+			URL:    &url.URL{Scheme: "https", Host: "backend.example"},
+		}).WithContext(context.Background())
+	}
+
+	first, err := transport.RoundTrip(newRequest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-started
+	if _, err := io.ReadAll(first.Body); err != nil {
+		t.Fatal(err)
+	}
+
+	secondResult := make(chan *http.Response, 1)
+	secondError := make(chan error, 1)
+	go func() {
+		response, roundTripErr := transport.RoundTrip(newRequest())
+		if roundTripErr != nil {
+			secondError <- roundTripErr
+			return
+		}
+		secondResult <- response
+	}()
+
+	select {
+	case <-started:
+		t.Fatal("second backend request started after EOF but before first body Close")
+	case err := <-secondError:
+		t.Fatalf("second RoundTrip failed early: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	if err := first.Body.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-started:
+	case err := <-secondError:
+		t.Fatalf("second RoundTrip failed after release: %v", err)
+	case <-time.After(time.Second):
+		t.Fatal("second backend request did not start after first body Close")
+	}
+
+	select {
+	case second := <-secondResult:
+		if err := second.Body.Close(); err != nil {
+			t.Fatal(err)
+		}
+	case err := <-secondError:
+		t.Fatal(err)
+	case <-time.After(time.Second):
+		t.Fatal("second RoundTrip did not return")
+	}
+}
+
 func TestBackendLimitedTransportPreservesUpgradeReadWriteBody(t *testing.T) {
 	upgradeBody := &testReadWriteCloser{reader: bytes.NewReader([]byte("server-data"))}
 	transport := newBackendLimitedTransport(roundTripFunc(func(request *http.Request) (*http.Response, error) {
