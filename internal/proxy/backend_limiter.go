@@ -1,0 +1,96 @@
+package proxy
+
+import (
+	"errors"
+	"io"
+	"net/http"
+	"strings"
+	"sync"
+)
+
+// backendLimitedTransport adds an explicit per-upstream concurrency boundary on
+// top of net/http's connection limits. A slot remains held until the response
+// body is closed, which is the RoundTripper ownership boundary. In particular,
+// reading EOF must not release the slot early: the upstream handler can still
+// be completing request teardown after the final response byte is observed.
+type backendLimitedTransport struct {
+	base http.RoundTripper
+	max  int
+	host sync.Map // normalized URL authority -> chan struct{}
+}
+
+func newBackendLimitedTransport(base http.RoundTripper, max int) *backendLimitedTransport {
+	return &backendLimitedTransport{base: base, max: max}
+}
+
+func (t *backendLimitedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if t == nil || t.base == nil || t.max <= 0 {
+		return nil, errors.New("gateway proxy: backend concurrency limiter is not configured")
+	}
+	if req == nil || req.URL == nil {
+		return nil, errors.New("gateway proxy: backend request URL is required")
+	}
+	authority := strings.ToLower(strings.TrimSpace(req.URL.Host))
+	if authority == "" {
+		return nil, errors.New("gateway proxy: backend request authority is required")
+	}
+	value, _ := t.host.LoadOrStore(authority, make(chan struct{}, t.max))
+	limit := value.(chan struct{})
+	select {
+	case limit <- struct{}{}:
+	case <-req.Context().Done():
+		return nil, req.Context().Err()
+	}
+
+	release := func() { <-limit }
+	response, err := t.base.RoundTrip(req)
+	if err != nil {
+		release()
+		return nil, err
+	}
+	if response == nil || response.Body == nil {
+		release()
+		return nil, errors.New("gateway proxy: backend transport returned a response without a body")
+	}
+
+	// net/http represents a successful protocol upgrade with a response body
+	// that is also writable. ReverseProxy requires that io.ReadWriteCloser
+	// contract to tunnel upgraded traffic. Preserve it while still holding the
+	// concurrency slot until the upgraded connection closes.
+	if readWriteBody, ok := response.Body.(io.ReadWriteCloser); ok {
+		response.Body = &releaseOnCloseReadWriteBody{ReadWriteCloser: readWriteBody, release: release}
+	} else {
+		response.Body = &releaseOnCloseBody{ReadCloser: response.Body, release: release}
+	}
+	return response, nil
+}
+
+func (t *backendLimitedTransport) CloseIdleConnections() {
+	if closer, ok := t.base.(interface{ CloseIdleConnections() }); ok {
+		closer.CloseIdleConnections()
+	}
+}
+
+type releaseOnCloseBody struct {
+	io.ReadCloser
+	once    sync.Once
+	release func()
+}
+
+func (b *releaseOnCloseBody) Close() error {
+	err := b.ReadCloser.Close()
+	b.once.Do(b.release)
+	return err
+}
+
+type releaseOnCloseReadWriteBody struct {
+	io.ReadWriteCloser
+	once    sync.Once
+	release func()
+}
+
+func (b *releaseOnCloseReadWriteBody) Close() error {
+	err := b.ReadWriteCloser.Close()
+	b.once.Do(b.release)
+	return err
+}
