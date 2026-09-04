@@ -1,53 +1,127 @@
 # GoreeCloud Gateway Specifications
 
-## Status
+## 1. Authority and lifecycle
 
-GoreeCloud Gateway is in active development as the first-party GoreeCloud ingress, reverse-proxy, routing, HTTPS, certificate-lifecycle, and controlled service-publication system.
+GoreeCloud Gateway is in **Active Development**. The authoritative project specification is `GoreeCloud/Projects/Project Specification — Gateway`; this repository record is the code-adjacent governance and implementation companion.
 
-The canonical product record is maintained in Google Drive under `GoreeCloud/Projects/Project Specification — Gateway`. This repository document is the version-coupled implementation specification and must not silently override that canonical project record.
+Accepted `main` currently contains product identity, AGPL-3.0 license material, and repository governance only. The native runtime remains in separately governed development pull requests. Caddy remains production-authoritative.
 
-Production authority has **not** migrated. Existing production Caddy remains authoritative until retained migration evidence passes the required gates and an explicit production migration is approved.
+## 2. Purpose
 
-## Native implementation boundary
+Gateway is the GoreeCloud-owned reverse proxy, HTTPS gateway, ingress controller, certificate manager, routing/load-balancing platform, and controlled web-service publication system intended eventually to replace Caddy's application-level production gateway role.
 
-Gateway is a GoreeCloud-owned implementation rather than a fork or re-skin of Caddy, Traefik, or Nginx Proxy Manager. Those products may be used as feature, migration, and interoperability references only.
+Gateway must remain original GoreeCloud software. Narrow protocol, cryptographic, standards, and other foundational dependencies may be used when rebuilding them would create greater risk, but a complete third-party reverse-proxy product must not become the application foundation.
 
-Current native source includes:
+## 3. Product boundaries
 
-- typed `goreecloud-gateway-config/v1` configuration;
-- deterministic host/path/header/method routing;
-- HTTP reverse proxying, streaming, and upgraded connections;
-- health-aware backend selection and failover;
-- bounded upstream transport behavior;
-- last-known-good runtime configuration reload behavior;
-- route-scoped TLS policy and certificate-profile inventory;
-- provider-neutral certificate renewal, protected staging, integrity verification, publication planning, rollback-safe publication, controlled activation, and isolated renewal rehearsal;
-- backup/restore and compare-and-swap rollback primitives for isolated configuration recovery;
-- privacy-safe runtime status and migration evidence contracts;
-- exact-source isolated runtime acceptance;
-- exact-source isolated sustained-load evidence collection.
+Gateway owns approved HTTP/HTTPS publication and related configuration/routing/certificate state. It does not become the authoritative:
 
-## Acceptance contracts
+- DNS server;
+- VPN/overlay network;
+- firewall;
+- identity provider;
+- application authentication system;
+- general-purpose network-management platform.
 
-`goreecloud-gateway-migration-evidence/v1` is fail closed and binds evidence to an exact source revision and immutable runtime artifact. Required migration gates include configuration validation, route parity, TLS renewal rehearsal, streaming/upgrades, sustained load, backpressure, backup/restore, rollback, listener ownership, observability, Privacy Shield, Wardveil Security, Everkeep, current-Stable Glaze UI, GoreeCloud Mesh coordination, GoreeCloud Identity integration, and governance integration.
+GoreeCloud DNS, Network, Identity, Wardveil Security, Privacy Shield, Mesh, Everkeep, and application-specific systems remain authoritative for their respective domains.
 
-Complete source evidence can make a candidate eligible for a migration rehearsal only. It cannot authorize production cutover.
+## 4. Control-plane and data-plane separation
 
-The isolated runtime workflow builds the actual Gateway and recovery artifacts from the exact candidate source, exercises them on loopback with temporary configuration, and emits sanitized evidence. The isolated sustained-load workflow builds the actual Gateway artifact from the exact candidate source and records steady loopback request volume, failure count, error rate, and latency percentiles.
+Gateway is both an infrastructure application and an infrastructure service.
 
-Neither isolated workflow represents production capacity, production route parity, public listener ownership, or production approval.
+The control plane manages canonical configuration, services/routes/backends, certificate orchestration, validation, discovery proposals, history, rollback, audit state, status, and administrative workflows.
 
-## Platform boundaries
+The data plane owns approved HTTP/HTTPS listeners, TLS termination, routing, reverse proxying, backend selection, connection management, streaming/upgraded connections, policy enforcement, and runtime operational evidence.
 
-- Privacy Shield / Privacy Center governs privacy, consent, minimization, governance, and user control.
-- Wardveil Security / Security Center governs security protection, detection, verification, and response.
-- Everkeep / Continuity Center governs backup, recovery, preservation, portability, and continuity.
-- Glaze UI / Design Center governs interface, accessibility, responsiveness, and design-system conformance.
-- GoreeCloud Mesh / Mesh Center governs platform coordination, integration capabilities, and events.
-- GoreeCloud Identity / Identity Center governs identities, accounts, credentials, authorization, sessions, devices, and delegated authority.
+A temporary control-plane failure should not unnecessarily terminate traffic already using the last known-good data-plane configuration unless a security condition requires fail-closed behavior.
 
-Gateway must consume those platform contracts without assuming their authority.
+## 5. Configuration objects and lifecycle
 
-## Production acceptance boundary
+Gateway uses first-party **Service**, **Route**, and **Backend** objects. A backend may exist without publication; a service may exist without a route; a route may remain draft/disabled.
 
-Production migration remains blocked until representative environment evidence proves the intended route/configuration parity, listener transfer, certificate and rollback behavior, sustained-load/error/latency objectives, privacy-safe observability, platform-system acceptance, recovery, and reversible cutover. Source code and CI do not grant production authority.
+Candidate configuration follows:
+
+`Draft → Validate → Preview → Activate → Observe → Retain or Roll Back`
+
+Validation must reject unsafe or ambiguous state, including duplicate/conflicting routes, invalid backends, listener conflicts, invalid TLS/access policy, missing objects, unsafe public exposure, and other configuration that cannot safely become active.
+
+An invalid candidate must never replace the known-good configuration.
+
+## 6. Publication classification
+
+Every publication requires an explicit classification:
+
+- Internal
+- Private
+- Restricted Public
+- Public
+
+Private operation is the default. Discovery alone must not create an active publication. Route activation requires approved hostname/destination/TLS/access/listener/backend/conflict validation.
+
+## 7. Proxy and TLS objectives
+
+The product direction includes HTTP/1.1 and HTTP/2 reverse proxying, WebSocket/streaming support, timeouts, health checks, connection/backpressure controls, load balancing, redirects/header transforms, graceful configuration reloads, and optional later HTTP/3 only after separate acceptance.
+
+Automatic HTTPS must include safe ACME lifecycle management, DNS-01, permitted HTTP-01/TLS-ALPN-01 paths, wildcard workflows, certificate inventory/expiry/renewal/failure state, protected certificate storage, and safe failure behavior. A certificate failure must not silently downgrade a service to unencrypted publication.
+
+## 8. Discovery
+
+Initial discovery focuses on Docker. Discovery may identify eligible workloads, networks, candidate ports, approved publication metadata, and conflicts, but it produces proposed state. Activation requires approval unless a separately governed automation policy explicitly authorizes a narrow workflow.
+
+## 9. Caddy migration boundary
+
+Caddy remains production-authoritative until Gateway passes the complete migration and production-acceptance process.
+
+Required evidence includes, as applicable:
+
+- independently reviewed migration-source identity;
+- exact configuration/route/backend/TLS intent parity;
+- certificate issuance and renewal rehearsal;
+- WebSocket/streaming behavior;
+- production-representative sustained load, latency, error rate, and backpressure;
+- backup/restore and known-good recovery;
+- rollback and reversible cutover;
+- listener ownership and conflict validation;
+- monitoring/observability;
+- private/public access parity;
+- target-environment platform integrations;
+- exact artifact/deployment identity;
+- explicit production-cutover authorization.
+
+Source validation and isolated runtime tests may grant migration-rehearsal eligibility only. They do not authorize production cutover.
+
+## 10. GoreeCloud platform requirements
+
+Stable qualification requires substantive accepted integration with:
+
+- **Glaze UI** — administrative presentation, interaction, accessibility, responsive/adaptive behavior, and state semantics.
+- **Wardveil Security** — exposure risk, route/listener conflicts, TLS/certificate/backend findings, security headers, configuration integrity, and evidence-backed protection state.
+- **Privacy Shield** — minimal logging, redaction, sensitive-header protection, retention controls, client-information minimization, privacy-safe metrics, and truthful privacy evidence.
+- **Everkeep** — configuration snapshots, route/configuration history, export/import, backup/restore, known-good retention, rollback, disaster recovery, and migration portability.
+- **GoreeCloud Mesh** — governed cross-service coordination where required.
+- **GoreeCloud Identity** — approved administrative identity/authentication; Gateway must not become a competing identity authority.
+- **GoreeCloud governance** — explicit publication and production-cutover approval boundaries.
+
+No platform name or badge counts as implemented integration evidence by itself.
+
+## 11. Security and privacy requirements
+
+Gateway is private by default. Administrative write operations must be authenticated, authorized, auditable, bounded, and designed to prevent accidental broad exposure.
+
+Routine views and logs must not expose reusable credentials, cookies, authentication material, secrets, private request bodies, or sensitive headers. Operational events should retain only the minimum information required to diagnose route, certificate, backend, configuration, and traffic failures.
+
+## 12. Observability and recovery
+
+Gateway must provide privacy-safe evidence for request/response distributions, backend/route health, connection state, certificate events, activation/validation failures, proxy errors, latency where justified, security findings, and recovery state.
+
+The product must preserve sufficient configuration history and known-good state to recover from route, backend, TLS, redirect/header, WebSocket, health-check, exposure, or administrative-lockout regressions.
+
+## 13. Current source-evidence boundary
+
+Native implementation work exists in draft development pull requests and includes increasingly strong source, isolated runtime, sustained-load, migration-evidence, configuration-parity, and Infrastructure Status/publication-preflight contracts. Those pull requests remain separately governed and are not merged into accepted `main` by this repository-governance work.
+
+Repository documentation must always distinguish accepted main, validated development candidate, migration-rehearsal evidence, production migration acceptance, and final Stable qualification.
+
+## 14. Production qualification
+
+Gateway must remain Development and Caddy must remain production-authoritative until all applicable routing, TLS, certificate-renewal, publication, upgraded/streaming connection, backend health, configuration rollback, logging/observability, Wardveil, Privacy Shield, Everkeep, Mesh, Identity, Glaze UI, backup/restore, migration rollback, listener ownership, and explicit production approval gates pass together.

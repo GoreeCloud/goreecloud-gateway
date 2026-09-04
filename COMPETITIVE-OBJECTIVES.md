@@ -1,38 +1,56 @@
 # GoreeCloud Gateway Competitive Objectives
 
-Caddy, Traefik, Nginx Proxy Manager, HAProxy, Envoy, and comparable ingress/proxy systems may be used as feature, interoperability, usability, and operational references. They are not implementation dependencies unless a separately approved narrow dependency is documented.
+## Objective
 
-## Product objectives
+GoreeCloud Gateway should combine the strongest useful qualities associated with modern reverse proxies, ingress controllers, and visual proxy managers while remaining original GoreeCloud software with a safer publication lifecycle and stronger GoreeCloud-native governance.
 
-GoreeCloud Gateway should compete by combining:
+Caddy, Traefik, Nginx, and Nginx Proxy Manager are capability references only. Gateway must not inherit a complete third-party product as its codebase or present compatibility with another product as first-party implementation.
 
-- first-party GoreeCloud ownership and native platform integration;
-- deterministic, inspectable routing and safe configuration activation;
-- strong HTTPS and certificate lifecycle automation;
-- health-aware load distribution and failure handling;
-- clear private/public publication boundaries;
-- accessible Glaze UI administration;
-- privacy-minimized observability;
-- evidence-bound migration and rollback;
-- reliable backup, restore, portability, and continuity through Everkeep;
-- explicit Wardveil Security and Privacy Shield control boundaries;
-- GoreeCloud Mesh coordination and GoreeCloud Identity authorization integration.
+## Capability objectives
 
-## Engineering objectives
+### Simple automatic HTTPS
 
-Before production migration, the project should demonstrate:
+Gateway should make correctly secured HTTPS publication straightforward while preserving explicit certificate inventory, renewal state, failure evidence, challenge/provider abstraction, and rollback-safe behavior.
 
-1. route and configuration parity against the intended migration source;
-2. sustained representative load with agreed latency and error-rate objectives;
-3. streaming and upgraded-connection reliability;
-4. safe backpressure under overload;
-5. certificate issuance, renewal, activation, rollback, and recovery;
-6. reversible listener ownership transfer;
-7. privacy-safe operational evidence and incident diagnostics;
-8. backup/restore and disaster-recovery evidence;
-9. required platform-system acceptance;
-10. exact source, artifact, configuration, and deployment provenance.
+### Powerful routing and discovery
 
-## Differentiation rule
+The product should support expressive routing, health-aware backend selection, upgraded/streaming connections, dynamic discovery, and future scalable backends without turning service discovery into automatic exposure.
 
-Competitive claims must describe implemented and evidenced behavior. Planned administration surfaces, production scale, migration parity, or platform integration must remain objectives until the corresponding evidence exists.
+### Approachable administration
+
+A Glaze UI administrative application should make services, routes, backends, certificates, discovery proposals, traffic, security, health, logs, configuration history, and rollback understandable without requiring a configuration file to be the primary user interface.
+
+### Automation without hidden authority
+
+The API/CLI should support safe automated management while maintaining authentication, authorization, auditability, staged activation, bounded permissions, and explicit publication policy.
+
+## GoreeCloud differentiation
+
+- private-by-default publication classifications;
+- source/artifact/evidence-bound migration readiness;
+- known-good configuration retention and explicit rollback;
+- Privacy Shield-minimized operational logging;
+- Wardveil Security-backed exposure/TLS/configuration security evidence;
+- Everkeep-backed configuration portability and recovery;
+- Mesh/Identity/governance integration rather than isolated proxy administration;
+- controlled Caddy migration with independent parity and listener-ownership evidence;
+- first-party design and lifecycle semantics optimized for GoreeCloud rather than generic multi-tenant hosting.
+
+## Quality objectives
+
+- deterministic configuration validation;
+- no invalid-candidate activation;
+- graceful reloads and bounded connection behavior;
+- correct WebSocket/streaming semantics;
+- safe certificate failure behavior with no silent cleartext downgrade;
+- meaningful backpressure and production-representative load testing before cutover;
+- clear distinction between candidate, isolated accepted, migration-rehearsal eligible, production-approved, and Stable states;
+- privacy-safe evidence sufficient to diagnose failures without routine collection of sensitive request data.
+
+## Migration objective
+
+Gateway wins only if it can replace Caddy without reducing safety, availability, certificate reliability, privacy, observability, or recoverability. Production cutover must therefore be treated as a migration program with independently reviewed source configuration, parity, rehearsal, rollback, and explicit approval—not as a feature toggle.
+
+## Current evidence boundary
+
+Accepted `main` is still the governance/branding/license baseline. Native executable work remains in draft development pull requests and Caddy remains the active production gateway. Competitive objectives do not authorize production listener transfer or Stable qualification.

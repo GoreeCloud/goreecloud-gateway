@@ -1,45 +1,60 @@
 # GoreeCloud Gateway Features
 
-This file distinguishes implemented branch behavior from accepted future scope. A listed objective is not a claim of production availability.
+Status vocabulary: **Accepted main**, **Validated development candidate**, **Planned**, or **Blocked by prerequisite**. Candidate or isolated-runtime evidence is not production-cutover authority.
 
-## Implemented on the active development branch
+## Accepted main
 
-- Native HTTP reverse proxy runtime.
-- Deterministic route matching and conflict validation.
-- Host, path, method, and configured routing controls.
-- Streaming and upgraded-connection proxy support.
-- Backend health participation, failover, and bounded transport behavior.
-- Explicit per-upstream response-lifetime concurrency limiting that holds capacity until response-body close, including upgraded connections.
-- Last-known-good runtime configuration reload behavior.
-- TLS route/profile inventory and certificate lifecycle primitives.
-- Provider-neutral renewal candidate issuance boundary.
-- Owner-protected certificate staging and SHA-256 integrity verification.
-- Exact-live-serial publication planning and rollback-safe publication.
-- Controlled runtime certificate activation and isolated renewal rehearsal.
-- Configuration recovery snapshots, compare-and-swap restore, and rollback rehearsal.
-- Privacy-safe aggregate runtime status.
-- Producer-owned semantic service-availability evidence with `unknown`, `inactive`, `available`, `degraded`, and `unavailable` states plus machine-readable reasons derived only from aggregate Gateway runtime facts.
-- Explicit semantic separation of Gateway service availability from connectivity, privacy, security, and continuity claims.
-- Fail-closed migration-readiness evaluation.
-- Exact-source loopback runtime acceptance with bounded concurrency/backpressure evidence.
-- Exact-source isolated sustained-load evidence with request count, failure/error rate, and p50/p95/p99 latency recording.
-- Migration gates for Privacy Shield, Wardveil Security, Everkeep, current-Stable Glaze UI, GoreeCloud Mesh, GoreeCloud Identity, and governance integration.
+| Feature / record | Status | Boundary |
+|---|---|---|
+| GoreeCloud Gateway product identity | Accepted main | Canonical branding consumer contract and local synchronized artwork exist. |
+| GNU AGPL v3 repository license material | Accepted main | Root `LICENSE`; third-party dependencies retain separate terms. |
+| Caddy-authoritative migration boundary | Accepted main | Documentation explicitly keeps production publication on Caddy until cutover approval. |
+| Six mandatory repository governance records | Accepted main after this governance change | Documentation/governance only; does not merge runtime development. |
 
-## Accepted but not yet production-accepted
+## Native development candidates
 
-- Production-representative sustained-load, latency, and error-rate acceptance.
-- Real migration-source configuration and route parity.
-- Public listener ownership transfer and reversible cutover rehearsal.
-- Target-environment privacy-safe operational evidence.
-- Final certificate/DNS provider integration and production issuance acceptance.
-- Full administration API and Glaze UI management surface.
-- Complete service discovery and policy-chain administration.
-- Production backup/restore and disaster-recovery evidence.
+Separate draft pull requests contain executable Gateway work. Current development evidence includes or targets:
 
-## Explicit non-claims
+- first-party Go Gateway runtime/control-plane slices;
+- deterministic routing and backend selection;
+- health-aware failover;
+- streaming and upgraded-connection handling;
+- route-scoped TLS policy and certificate profiles;
+- provider-neutral certificate renewal and protected publication/rollback concepts;
+- exact-source migration-evidence contracts;
+- loopback isolated runtime acceptance;
+- isolated sustained-load/backpressure evidence;
+- configuration recovery and rollback primitives;
+- configuration-parity fingerprints and migration-source identity contracts;
+- local Infrastructure Status v1 and publication preflight/validation contracts;
+- privacy-minimized status/evidence outputs;
+- platform-system acceptance gates for Glaze UI, Wardveil Security, Privacy Shield, Everkeep, Mesh, Identity, and governance.
 
-- The isolated load harness is not a production-capacity benchmark.
-- An `available` Gateway status is a local service-availability claim only; it does not assert end-to-end connectivity, privacy protection, security posture, or continuity readiness.
-- Migration-readiness code cannot approve production cutover.
-- Caddy production authority has not been transferred.
-- Platform-system gate fields are acceptance boundaries, not proof that target-environment integration has passed.
+These are **Validated development candidate** capabilities only at the exact heads/workflow runs documented in the authoritative Gateway project specification and changelog. They are not accepted `main` behavior until their own PR review/merge gates are satisfied.
+
+## Planned capabilities
+
+- complete production-grade HTTP/HTTPS listener/data plane;
+- production-safe automatic HTTPS/ACME and certificate lifecycle;
+- visual Services/Routes/Backends/Certificates/Discovery/Access/Traffic/Logs/Security/Health/Configuration/Settings administration;
+- complete staged configuration transactions and last-known-good activation behavior;
+- approved Docker discovery and proposed-publication workflows;
+- advanced route matching, middleware/policy chains, rate limiting, redirects/header transforms, compression, and load balancing;
+- documented first-party API and CLI;
+- optional HTTP/3 after separate dependency, security, and runtime acceptance;
+- production Caddy migration tooling and reversible cutover.
+
+## Blocked by prerequisite
+
+- production listener ownership on TCP 80/443;
+- Caddy retirement;
+- migration-source route/configuration parity acceptance;
+- production-representative load/SLO/backpressure evidence;
+- target-environment backup/restore and rollback;
+- production certificate/TLS renewal evidence;
+- target-environment Privacy Shield, Wardveil Security, Everkeep, Mesh, Identity, Glaze UI, and governance integration evidence;
+- explicit production migration approval and Stable qualification.
+
+## Evidence rule
+
+Gateway must never convert discovery, candidate configuration, source CI, isolated runtime testing, successful proxy traffic, or a migration evidence artifact into a production-authorization claim without the separately required target-environment and governance evidence.

@@ -1,79 +1,73 @@
 # GoreeCloud Gateway
 
-GoreeCloud Gateway is the native, first-party GoreeCloud application and service for reverse proxying, application ingress, HTTPS termination, certificate lifecycle management, routing, load balancing, health-aware upstream selection, and controlled service publication.
+GoreeCloud Gateway is the planned first-party GoreeCloud reverse proxy, HTTPS gateway, ingress controller, certificate manager, routing/load-balancing system, and controlled web-service publication platform.
 
-It is designed from the ground up as a GoreeCloud-owned product. Caddy, Traefik, and Nginx Proxy Manager are feature and interoperability references only; GoreeCloud Gateway is not a fork or re-skin of those applications.
+**Lifecycle:** Active Development
 
-## Product responsibilities
+## Current accepted-main boundary
 
-- HTTP and HTTPS reverse proxying
-- Host, path, header, method, and protocol-aware routing
-- TLS termination and certificate lifecycle management
-- ACME automation including DNS-01 integration
-- HTTP-to-HTTPS redirects and canonical redirects
-- WebSocket and streaming proxy support
-- Upstream pools, load balancing, health checks, retries, and failover
-- Route priorities, middleware/policy chains, and reusable route templates
-- Private and public publication classifications
-- Service discovery and configuration validation
-- Access logs, privacy-safe diagnostics, metrics, and audit events
-- Configuration API and Glaze UI administration
-- Import/migration tooling for approved Caddy, Traefik, and Nginx Proxy Manager configurations
-- Backup, restore, rollback, and configuration history
+The accepted `main` branch is currently a governance, licensing, and branding foundation. It does **not** own production HTTP/HTTPS listener authority and does not contain the full native Gateway runtime.
 
-## Platform integrations
+Caddy remains production-authoritative for GoreeCloud web publication until Gateway completes migration-source parity, production-representative runtime, recovery/rollback, platform-integration, listener-transfer, and explicit production-acceptance gates.
 
-Gateway must integrate current Stable contracts for Glaze UI, Wardveil Security, Privacy Shield, and Everkeep. The currently validated Glaze UI Stable baseline is 1.6.0; Candidate 2.0.0 is not accepted as the Stable migration baseline.
+Executable development remains isolated in separate draft pull requests, including the native foundation and Infrastructure Status/publication-preflight work. Their source/CI evidence must not be represented as accepted `main` behavior before their own review and merge gates are satisfied.
 
-## Responsibility boundaries
+## Product role
 
-Gateway is authoritative for ingress and reverse-proxy behavior. GoreeCloud DNS / Beacon remains authoritative for DNS service and DNS policy. GoreeCloud Network / Conduit remains authoritative for private connectivity and network access policy. Identity remains authoritative for platform identity contracts. Destination applications retain application authorization. Monitor retains general service monitoring.
+Gateway is intended to provide:
 
-## Implemented native source
+- HTTP/HTTPS reverse proxying and TLS termination;
+- automatic certificate lifecycle management;
+- host, path, header, method, and approved protocol-aware routing;
+- backend service definitions, health checks, load balancing, and failover;
+- WebSocket and streaming proxying;
+- staged configuration validation, preview, activation, history, and rollback;
+- safe Docker-oriented service discovery and publication proposals;
+- explicit Internal, Private, Restricted Public, and Public exposure classifications;
+- privacy-minimized operational metrics and events;
+- an administrative Glaze UI application, API, and CLI.
 
-The current development branch contains the first-party Gateway runtime foundation, including typed configuration, deterministic routing, reverse proxying, streaming and upgraded-connection handling, reusable backend health state, health-aware failover, service-scoped round-robin selection, bounded upstream transport settings, last-known-good runtime reload behavior, and a privacy-safe aggregate runtime-status contract.
+Gateway does not replace GoreeCloud DNS, Network, Identity, firewall policy, or application authentication. Those systems remain authoritative for their own domains.
 
-The TLS lifecycle now includes explicit route-to-certificate-profile inventory, renewal eligibility/request validation, provider-neutral issuance, candidate validation, owner-protected staging, staged-bundle integrity verification, publication planning bound to the exact live serial, rollback-safe on-disk publication, controlled runtime activation, retained backup evidence, and an isolated full-cycle rehearsal boundary. The rehearsal boundary refuses live/staging/backup paths outside its explicitly supplied isolated root, activates only the rehearsal candidate, restores the prior pair and runtime, and always records `production_cutover_authorized=false`.
+## Production migration principle
 
-The runtime-status contract is `goreecloud-gateway-runtime-status/v1`. It exposes aggregate counts for services, enabled routes, enabled backends, and healthy/unhealthy/unknown backend state while intentionally excluding hostnames, backend URLs, request data, headers, client identifiers, credentials, and other sensitive material. This is the source foundation for later Wardveil Security, Privacy Shield, Monitor, and Manager evidence adapters.
+Discovery or configuration must never publish a backend automatically. Production cutover from Caddy must be reversible and evidence-bound. A source build that can proxy traffic is not sufficient for production authority.
 
-The migration-readiness contract is `goreecloud-gateway-migration-evidence/v1`. It is a fail-closed evidence evaluator bound to an exact source revision and immutable runtime-artifact SHA-256. It enumerates route parity, TLS rehearsal, streaming/upgraded connections, sustained load, backpressure, backup/restore, rollback, listener ownership, observability, Privacy Shield, Wardveil Security, Everkeep, and current-Stable Glaze UI validation. Even complete evidence can only make Gateway eligible for an explicitly approved migration rehearsal; the decision always keeps `production_cutover_authorized=false`.
+Required migration evidence includes configuration/route parity, TLS and renewal behavior, upgraded/streaming connections, production-representative load/backpressure, backup/restore, rollback, listener ownership, observability, required platform-system acceptance, and explicit cutover approval.
 
-## Exact-source isolated runtime acceptance
+## GoreeCloud platform requirements
 
-`.github/workflows/gateway-isolated-runtime.yml` builds the real `cmd/gateway` binary from the exact candidate revision, verifies the checked-out SHA, and runs `scripts/isolated_runtime_acceptance.py` entirely on loopback.
+Stable qualification requires substantive, current accepted integration with:
 
-The bounded exercise:
+- Glaze UI for the administrative application and adaptive/accessibility contract;
+- Wardveil Security for exposure, listener, route, TLS, certificate, backend, and configuration-integrity security state;
+- Privacy Shield for minimal logging, redaction, retention, sensitive-header protection, client-information minimization, and privacy-safe metrics;
+- Everkeep for configuration snapshots, export/import, known-good retention, backup/restore, rollback, and disaster-recovery evidence;
+- GoreeCloud Mesh for governed service coordination where applicable;
+- GoreeCloud Identity for approved administrative identity/authentication without making Gateway the platform identity provider;
+- GoreeCloud governance for publication and production-cutover authority.
 
-- starts an isolated loopback backend with a health endpoint;
-- launches the actual Gateway binary on a loopback-only listener using temporary non-production configuration;
-- proves host-based route forwarding through the running process;
-- proves backend health participation in routing;
-- verifies an unmatched host remains unrouted with HTTP 404;
-- requests graceful process shutdown and requires a clean exit;
-- records the exact source revision and SHA-256 of the built Gateway artifact;
-- emits `goreecloud-gateway-isolated-runtime-evidence/v1` without credentials, production routes, hostnames, request contents, client identifiers, or other production data;
-- always records `production_cutover_authorized=false`.
+Decorative identities do not satisfy these integration gates.
 
-This workflow supplies bounded runtime evidence only. It does not prove production route parity, TLS ownership, sustained production-equivalent load, backup/restore, rollback, full platform integration, or migration approval.
+## Canonical identity
 
-Both the native-foundation and isolated-runtime workflows explicitly check out and verify the exact pull-request head or push revision before validation. A synthetic merge revision is not accepted as source identity for these migration gates.
+Branding authority is `GoreeCloud/goreecloud-branding-assets`. The canonical Gateway product artwork is `products/gateway/app-icon.svg`. Local artwork is a synchronized consumer derivative only and does not establish implementation or network authority.
 
-## Planned source architecture
+See [BRANDING.md](BRANDING.md).
 
-- `cmd/gateway` — service entry point
-- `internal/config` — typed configuration and validation
-- `internal/routing` — deterministic route matching and priority
-- `internal/proxy` — HTTP reverse-proxy execution and privacy-safe runtime status
-- `internal/upstream` — future dedicated pools, balancing, health, retry, and failover subsystem
-- `internal/tlsconfig` — TLS runtime, policy inventory, certificate lifecycle, transaction, activation, and isolated rehearsal controls
-- `internal/acceptance` — fail-closed migration-readiness evidence and gate evaluation
-- `internal/policy` — middleware and request/response policy chains
-- `internal/api` — administration API
-- `internal/observability` — privacy-safe logs, metrics, diagnostics, and audit events
-- `internal/platform` — Glaze UI, Wardveil Security, Privacy Shield, and Everkeep adapters
-- `internal/migration` — controlled import and compatibility tooling
+## Repository governance
 
-## Development and release boundary
+This repository maintains the required root records:
 
-Source implementation, CI success, isolated runtime validation, migration-rehearsal eligibility, and production acceptance are separate states. The isolated renewal rehearsal operates only on paths inside its explicit rehearsal root and does not authorize live publication. The isolated runtime workflow operates only against temporary loopback configuration and is not a production deployment. The migration-readiness evaluator records missing acceptance gates but cannot authorize cutover. No source change authorizes production cutover. Existing production Caddy remains authoritative until a later migration is explicitly validated and approved.
+- `README.md`
+- `SPECIFICATIONS.md`
+- `FEATURES.md`
+- `BENEFITS.md`
+- `COMPETITIVE-OBJECTIVES.md`
+- `BRANDING.md`
+
+The authoritative project record is `GoreeCloud/Projects/Project Specification — Gateway`; chronological implementation evidence is recorded in `GoreeCloud/Changelogs/Change Log — Gateway`.
+
+## License
+
+Unless otherwise noted, GoreeCloud-owned repository source is licensed under the GNU Affero General Public License version 3. Third-party dependencies and protocol/cryptographic libraries retain their own applicable licenses and notices.

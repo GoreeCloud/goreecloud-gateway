@@ -1,0 +1,129 @@
+schema_version: '0.2'
+
+component:
+  type: service
+  id: goreecloud-gateway
+  product_name: GoreeCloud Gateway
+  repository: GoreeCloud/goreecloud-gateway
+
+lifecycle: development
+version: unreleased-development
+
+supported_platforms:
+  - linux
+
+api:
+  versions: []
+  endpoints: []
+
+platform_systems:
+  manager:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - README.md
+      - SPECIFICATIONS.md
+    notes: Manager operational visibility is applicable, but no accepted Manager integration exists on the authoritative default branch.
+  privacy_shield:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - README.md
+      - SPECIFICATIONS.md
+    notes: Privacy-minimized logging and evidence are required for Stable qualification, but Privacy Shield integration and runtime acceptance remain incomplete.
+  wardveil_security:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - README.md
+      - SPECIFICATIONS.md
+    notes: Exposure, listener, route, TLS, certificate, backend, and configuration-integrity security integration remains acceptance-gated.
+  everkeep:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - README.md
+      - SPECIFICATIONS.md
+    notes: Configuration backup, restore, known-good retention, rollback, and disaster-recovery acceptance are required but not accepted on the default branch.
+  glaze_ui:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - README.md
+      - SPECIFICATIONS.md
+    notes: An administrative Glaze UI application is required, but the accepted default branch is currently governance, licensing, and branding foundation rather than the full native Gateway runtime or administration application.
+  mesh:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - README.md
+      - SPECIFICATIONS.md
+    notes: Governed cross-service coordination is applicable where required, but no accepted Mesh runtime integration exists on the default branch.
+    capabilities: []
+    dependencies: []
+    published_events: []
+    consumed_events: []
+  identity:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - README.md
+      - SPECIFICATIONS.md
+    notes: GoreeCloud Identity must own approved administrative identity and authentication; no accepted Gateway Identity integration exists on the default branch.
+
+health:
+  health_endpoint: null
+  readiness_endpoint: null
+
+continuity:
+  backup:
+    required: true
+    requirements:
+      - Protect canonical Gateway configuration, service, route, backend, certificate-policy metadata, and known-good state through the approved Everkeep recovery model.
+      - Exclude reusable credentials, private keys, and certificate private material from ordinary portable evidence unless an explicitly protected recovery mechanism requires them.
+  restore:
+    required: true
+    requirements:
+      - Validate restore into an isolated environment before production qualification.
+      - Verify restored routing intent, listener ownership boundaries, TLS policy, backend references, and known-good rollback state for the exact candidate.
+  export:
+    required: true
+    requirements:
+      - Provide documented, bounded export of Gateway configuration and migration-relevant state without leaking reusable credentials or private key material.
+  portability:
+    required: true
+    requirements:
+      - Keep durable Gateway configuration and migration evidence in versioned GoreeCloud-owned formats that can be restored or transformed without permanent dependence on a complete third-party gateway product.
+
+external_dependencies: []
+
+compatibility:
+  platform_contract: '0.2'
+  glaze_ui_required: '1.1.0'
+  requires:
+    - goreecloud-platform-contract==0.2
+  provides: []
+
+evidence:
+  acceptance_tests: []
+  release: []
+
+conformance:
+  status: nonconformant
+  validated_at: null
+  evidence:
+    - README.md
+    - SPECIFICATIONS.md
+    - FEATURES.md
+  blockers:
+    - The accepted default branch does not contain the full native Gateway runtime or administrative application; executable development remains in separately governed draft pull requests.
+    - Caddy remains production-authoritative and no production listener-ownership transfer or cutover is authorized.
+    - GoreeCloud Manager integration and acceptance are incomplete.
+    - Privacy Shield integration and acceptance are incomplete.
+    - Wardveil Security integration and acceptance are incomplete.
+    - Everkeep backup, restore, recovery, and rollback acceptance are incomplete.
+    - Current Stable Glaze UI 1.1.0 administration implementation and acceptance are incomplete.
+    - GoreeCloud Mesh integration and acceptance are incomplete.
+    - GoreeCloud Identity integration and acceptance are incomplete.
+    - Exact-artifact target-environment migration, recovery, rollback, and production-acceptance evidence is incomplete.
+    - No Stable or production-approved Gateway release evidence is declared.
