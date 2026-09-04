@@ -16,28 +16,29 @@ const MigrationEvidenceSchemaV1 = "goreecloud-gateway-migration-evidence/v1"
 // routes, hostnames, backend URLs, certificate bytes, keys, credentials,
 // request data, client identifiers, or raw diagnostics.
 type MigrationEvidence struct {
-	Schema                        string `json:"schema"`
-	RecordedAt                    string `json:"recorded_at"`
-	SourceRevision                string `json:"source_revision"`
-	RuntimeArtifactSHA256         string `json:"runtime_artifact_sha256"`
-	ConfigurationValidated        bool   `json:"configuration_validated"`
-	RouteParityValidated          bool   `json:"route_parity_validated"`
-	TLSRenewalRehearsalPassed     bool   `json:"tls_renewal_rehearsal_passed"`
-	StreamingUpgradeValidated     bool   `json:"streaming_upgrade_validated"`
-	SustainedLoadValidated        bool   `json:"sustained_load_validated"`
-	BackpressureValidated         bool   `json:"backpressure_validated"`
-	BackupRestoreProven           bool   `json:"backup_restore_proven"`
-	RollbackRehearsed             bool   `json:"rollback_rehearsed"`
-	ListenerOwnershipValidated    bool   `json:"listener_ownership_validated"`
-	ObservabilityValidated        bool   `json:"observability_validated"`
-	PrivacyShieldValidated        bool   `json:"privacy_shield_validated"`
-	WardveilSecurityValidated     bool   `json:"wardveil_security_validated"`
-	EverkeepValidated             bool   `json:"everkeep_validated"`
-	GlazeUIStableValidated        bool   `json:"glaze_ui_stable_validated"`
-	MeshCoordinationValidated     bool   `json:"mesh_coordination_validated"`
-	IdentityIntegrationValidated  bool   `json:"identity_integration_validated"`
-	GovernanceIntegrationValidated bool `json:"governance_integration_validated"`
-	ProductionCutoverAuthorized   bool   `json:"production_cutover_authorized"`
+	Schema                         string `json:"schema"`
+	RecordedAt                     string `json:"recorded_at"`
+	SourceRevision                 string `json:"source_revision"`
+	RuntimeArtifactSHA256          string `json:"runtime_artifact_sha256"`
+	ConfigurationValidated         bool   `json:"configuration_validated"`
+	RouteParityValidated           bool   `json:"route_parity_validated"`
+	TLSRenewalRehearsalPassed      bool   `json:"tls_renewal_rehearsal_passed"`
+	StreamingUpgradeValidated      bool   `json:"streaming_upgrade_validated"`
+	SustainedLoadValidated         bool   `json:"sustained_load_validated"`
+	BackpressureValidated          bool   `json:"backpressure_validated"`
+	BackupRestoreProven            bool   `json:"backup_restore_proven"`
+	RollbackRehearsed              bool   `json:"rollback_rehearsed"`
+	ListenerOwnershipValidated     bool   `json:"listener_ownership_validated"`
+	ObservabilityValidated         bool   `json:"observability_validated"`
+	ManagerIntegrationValidated    bool   `json:"manager_integration_validated"`
+	PrivacyShieldValidated         bool   `json:"privacy_shield_validated"`
+	WardveilSecurityValidated      bool   `json:"wardveil_security_validated"`
+	EverkeepValidated              bool   `json:"everkeep_validated"`
+	GlazeUIStableValidated         bool   `json:"glaze_ui_stable_validated"`
+	MeshCoordinationValidated      bool   `json:"mesh_coordination_validated"`
+	IdentityIntegrationValidated   bool   `json:"identity_integration_validated"`
+	GovernanceIntegrationValidated bool   `json:"governance_integration_validated"`
+	ProductionCutoverAuthorized    bool   `json:"production_cutover_authorized"`
 }
 
 // MigrationDecision reports whether evidence is complete enough to enter an
@@ -83,6 +84,7 @@ func EvaluateMigrationReadiness(evidence MigrationEvidence) (MigrationDecision, 
 		{"rollback_rehearsed", evidence.RollbackRehearsed},
 		{"listener_ownership_validated", evidence.ListenerOwnershipValidated},
 		{"observability_validated", evidence.ObservabilityValidated},
+		{"manager_integration_validated", evidence.ManagerIntegrationValidated},
 		{"privacy_shield_validated", evidence.PrivacyShieldValidated},
 		{"wardveil_security_validated", evidence.WardveilSecurityValidated},
 		{"everkeep_validated", evidence.EverkeepValidated},
