@@ -9,6 +9,7 @@ import (
 func TestEvaluateMigrationReadinessRequiresEveryGate(t *testing.T) {
 	evidence := completeMigrationEvidence()
 	evidence.BackupRestoreProven = false
+	evidence.ManagerIntegrationValidated = false
 	evidence.WardveilSecurityValidated = false
 	evidence.MeshCoordinationValidated = false
 	evidence.IdentityIntegrationValidated = false
@@ -26,6 +27,7 @@ func TestEvaluateMigrationReadinessRequiresEveryGate(t *testing.T) {
 	}
 	want := []string{
 		"backup_restore_proven",
+		"manager_integration_validated",
 		"wardveil_security_validated",
 		"mesh_coordination_validated",
 		"identity_integration_validated",
@@ -86,6 +88,7 @@ func completeMigrationEvidence() MigrationEvidence {
 		RollbackRehearsed:             true,
 		ListenerOwnershipValidated:    true,
 		ObservabilityValidated:        true,
+		ManagerIntegrationValidated:   true,
 		PrivacyShieldValidated:        true,
 		WardveilSecurityValidated:     true,
 		EverkeepValidated:             true,
