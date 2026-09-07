@@ -90,11 +90,14 @@ func (c *Config) Validate() error {
 	}
 
 	for _, b := range c.Backends {
-		if b.ID == "" || b.URL == "" {
+		if strings.TrimSpace(b.ID) == "" || strings.TrimSpace(b.URL) == "" {
 			return fmt.Errorf("backend id and url are required")
 		}
 		if _, ok := backends[b.ID]; ok {
 			return fmt.Errorf("duplicate backend %q", b.ID)
+		}
+		if err := validateBackendEndpoint(b); err != nil {
+			return fmt.Errorf("backend %q: %w", b.ID, err)
 		}
 		backends[b.ID] = b
 	}
