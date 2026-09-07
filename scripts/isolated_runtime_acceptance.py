@@ -69,18 +69,24 @@ class Backend(http.server.BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
 
-        Backend.begin_request()
-        try:
-            if self.path == "/load":
+        # Measure the synthetic backend work interval, not Python handler
+        # teardown after the response has already been emitted. The Gateway
+        # transport owns its concurrency slot through response Body.Close;
+        # server-handler teardown is a later, different boundary and can
+        # otherwise transiently over-count completed work by one request.
+        if self.path == "/load":
+            Backend.begin_request()
+            try:
                 time.sleep(LOAD_HOLD_SECONDS)
-            body = b"goreecloud-gateway-isolated-runtime\n"
-            self.send_response(200)
-            self.send_header("Content-Type", "text/plain")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-        finally:
-            Backend.end_request()
+            finally:
+                Backend.end_request()
+
+        body = b"goreecloud-gateway-isolated-runtime\n"
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def do_HEAD(self) -> None:  # noqa: N802 - stdlib handler contract
         self.send_response(200)
