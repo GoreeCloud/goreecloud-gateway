@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goreecloud.com/schemas/gateway/config/v1",
+  "title": "GoreeCloud Gateway Configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "services", "routes", "backends"],
+  "properties": {
+    "schema": {"const": "goreecloud-gateway-config/v1"},
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "backend_ids"],
+        "properties": {
+          "id": {"$ref": "#/$defs/id"},
+          "name": {"type": "string", "minLength": 1, "maxLength": 128},
+          "backend_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}
+        }
+      }
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "service_id", "hostname", "path_prefix", "exposure", "enabled", "tls"],
+        "properties": {
+          "id": {"$ref": "#/$defs/id"},
+          "service_id": {"$ref": "#/$defs/id"},
+          "hostname": {"type": "string", "minLength": 1, "maxLength": 253},
+          "path_prefix": {"type": "string", "pattern": "^/"},
+          "methods": {"type": "array", "uniqueItems": true, "items": {"enum": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]}},
+          "exposure": {"enum": ["internal", "private", "restricted-public", "public"]},
+          "enabled": {"type": "boolean"},
+          "tls": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["mode"],
+            "properties": {
+              "mode": {"enum": ["required", "disabled"]},
+              "certificate_profile": {"$ref": "#/$defs/id"}
+            }
+          }
+        }
+      }
+    },
+    "backends": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "url", "enabled"],
+        "properties": {
+          "id": {"$ref": "#/$defs/id"},
+          "url": {"type": "string", "pattern": "^https?://"},
+          "enabled": {"type": "boolean"},
+          "health_path": {"type": "string", "pattern": "^/"}
+        }
+      }
+    },
+    "certificate_profiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "certificate_file", "private_key_file", "enabled"],
+        "properties": {
+          "id": {"$ref": "#/$defs/id"},
+          "certificate_file": {"type": "string", "minLength": 1, "maxLength": 4096},
+          "private_key_file": {"type": "string", "minLength": 1, "maxLength": 4096},
+          "enabled": {"type": "boolean"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"}
+  }
+}
