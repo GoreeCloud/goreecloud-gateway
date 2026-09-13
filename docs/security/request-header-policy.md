@@ -2,7 +2,7 @@
 
 ## Status
 
-Development security foundation only. The sanitizer in `internal/proxy` is not, by itself, production ingress authority and does not change the current Caddy production boundary.
+Development security foundation only. The sanitizer and trusted-proxy address resolver in `internal/proxy` are not, by themselves, production ingress authority and do not change the current Caddy production boundary.
 
 ## Threat model
 
@@ -25,17 +25,35 @@ GoreeCloud Gateway therefore needs a strict separation between:
 
 The sanitizer intentionally preserves ordinary application headers such as `Authorization`, `Cookie`, and application-specific metadata. Application authentication remains the responsibility of the application or its accepted authentication authority.
 
+## Trusted-proxy client-address foundation
+
+`TrustedProxyPolicy` adds a separate, non-wired client-address derivation primitive for future reviewed ingress integration.
+
+The policy:
+
+- accepts only explicitly configured exact IP addresses or CIDR ranges as trusted proxy peers;
+- rejects malformed, empty, unspecified, multicast, zoned, and IPv4-mapped IPv6 trust entries;
+- treats an untrusted direct peer as the client and ignores any supplied forwarding chain;
+- for an explicitly trusted direct peer, parses `X-Forwarded-For` strictly as an IP-only chain and walks it from right to left;
+- skips only addresses that are themselves inside the configured trusted-proxy set;
+- returns the first untrusted address as the candidate client identity;
+- fails closed when a trusted peer supplies no chain, a malformed chain, or a chain containing only trusted proxy addresses;
+- supports ordinary IPv4 and IPv6 peers without converting a forwarding header into authority by itself.
+
+This primitive does not read configuration from the environment, does not mutate requests, does not emit forwarding headers, and is not invoked by the authoritative proxy handler in this Development slice. A later integration must bind the reviewed trusted-proxy configuration to the accepted listener/runtime and prove the sequencing between peer validation, client-address derivation, sanitization, and backend forwarding.
+
 ## No implicit trust reconstruction
 
-This slice deliberately does not create replacement `Forwarded` or `X-Forwarded-*` values. A later runtime integration must derive any trusted forwarding metadata from accepted connection context and an explicit Gateway policy. Client-supplied values must never be used as the source of that identity unless a separately configured trusted-proxy chain has been validated.
+The current source still does not create replacement `Forwarded` or `X-Forwarded-*` values. A later runtime integration must derive any trusted forwarding metadata from accepted connection context and an explicit Gateway policy. Client-supplied values must never be used as the source of that identity unless the direct peer and forwarding chain have passed the separately configured trusted-proxy policy.
 
 ## Required runtime integration gates
 
-Before the sanitizer is wired into authoritative ingress, the Gateway runtime must define and test:
+Before these primitives are wired into authoritative ingress, the Gateway runtime must define and test:
 
+- the exact point at which peer trust and client-address derivation occur;
 - the exact point at which sanitization occurs before backend dispatch;
-- trusted proxy and direct-client connection semantics;
-- client-address derivation for IPv4 and IPv6;
+- the reviewed source and lifecycle for trusted-proxy CIDRs;
+- client-address derivation for IPv4 and IPv6 across direct and proxied connections;
 - TLS scheme and original-host derivation;
 - WebSocket and HTTP upgrade behavior after hop-by-hop normalization;
 - privacy-minimized observability for forwarded identity;
