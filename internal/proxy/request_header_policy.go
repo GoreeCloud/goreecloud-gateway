@@ -19,10 +19,6 @@ var hopByHopRequestHeaders = []string{
 
 var untrustedForwardingRequestHeaders = []string{
 	"Forwarded",
-	"X-Forwarded-For",
-	"X-Forwarded-Host",
-	"X-Forwarded-Proto",
-	"X-Forwarded-Port",
 	"X-Real-IP",
 	"X-Client-IP",
 	"X-Original-Forwarded-For",
@@ -53,7 +49,26 @@ func SanitizeInboundProxyHeaders(header http.Header) {
 	for _, name := range hopByHopRequestHeaders {
 		header.Del(name)
 	}
-	for _, name := range untrustedForwardingRequestHeaders {
-		header.Del(name)
+
+	// Treat the whole X-Forwarded-* namespace as client-controlled. Enumerating
+	// only familiar variants leaves room for an upstream application to trust a
+	// less common forwarding field that Gateway accidentally passed through.
+	// Iterate the actual map keys so even non-canonical casing is removed.
+	for name := range header {
+		if isUntrustedForwardingRequestHeader(name) {
+			delete(header, name)
+		}
 	}
+}
+
+func isUntrustedForwardingRequestHeader(name string) bool {
+	if strings.HasPrefix(strings.ToLower(name), "x-forwarded-") {
+		return true
+	}
+	for _, blocked := range untrustedForwardingRequestHeaders {
+		if strings.EqualFold(name, blocked) {
+			return true
+		}
+	}
+	return false
 }
