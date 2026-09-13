@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -12,12 +13,19 @@ func TestSanitizeInboundProxyHeadersRemovesForwardingIdentity(t *testing.T) {
 	header.Set("X-Forwarded-Host", "spoofed.example")
 	header.Set("X-Forwarded-Proto", "https")
 	header.Set("X-Forwarded-Port", "443")
+	header.Set("X-Forwarded-Uri", "/admin")
 	header.Set("X-Real-IP", "203.0.113.9")
 	header.Set("CF-Connecting-IP", "203.0.113.9")
 	header.Set("True-Client-IP", "203.0.113.9")
+	header["x-forwarded-custom"] = []string{"client-controlled"}
 
 	SanitizeInboundProxyHeaders(header)
 
+	for name := range header {
+		if strings.HasPrefix(strings.ToLower(name), "x-forwarded-") {
+			t.Fatalf("X-Forwarded namespace header survived sanitization: %s", name)
+		}
+	}
 	for _, name := range untrustedForwardingRequestHeaders {
 		if got := header.Get(name); got != "" {
 			t.Fatalf("header %s survived sanitization: %q", name, got)
