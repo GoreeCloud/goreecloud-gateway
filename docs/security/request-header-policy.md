@@ -20,7 +20,8 @@ GoreeCloud Gateway therefore needs a strict separation between:
 
 - standard hop-by-hop request headers;
 - additional hop-by-hop fields named by the inbound `Connection` header;
-- common forwarding and client-address headers such as `Forwarded`, `X-Forwarded-*`, `X-Real-IP`, and provider-specific client-IP fields.
+- the complete client-supplied `X-Forwarded-*` namespace, including uncommon variants rather than only a fixed subset;
+- other forwarding and client-address headers such as `Forwarded`, `X-Real-IP`, and provider-specific client-IP fields.
 
 The sanitizer intentionally preserves ordinary application headers such as `Authorization`, `Cookie`, and application-specific metadata. Application authentication remains the responsibility of the application or its accepted authentication authority.
 
