@@ -52,6 +52,8 @@ The Development candidate pins `golang.org/x/crypto v0.57.0` and imports only `g
 
 Gateway now declares Go 1.27.1 for this candidate. The earlier Go 1.24 line was removed from the stabilization branch because it is outside the current supported Go release window. Current vulnerability review remains mandatory before Stable qualification.
 
+The Go vulnerability database currently associates `GO-2026-5932` with the `golang.org/x/crypto` module because its unmaintained `openpgp` subpackages are unsafe by design. Gateway does not import those packages; it imports only `golang.org/x/crypto/acme`. The exact-head vulnerability workflow must continue to prove zero imported-package and zero reachable findings. This is a scoped technical non-applicability determination for the current source graph, not a blanket waiver for future `x/crypto` usage.
+
 ## Remaining production gates
 
 Before Gateway can assume Caddy's certificate-management role, the exact candidate still requires:
