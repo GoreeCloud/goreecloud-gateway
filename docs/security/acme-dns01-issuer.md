@@ -88,3 +88,22 @@ Before any CA-side key-change operation can be implemented, Gateway can:
 - fail closed if the active account-key fingerprint changes after preparation.
 
 This means a future CA key-change transaction can require recoverable replacement-key state to exist before it sends the RFC 8555 rollover request. The current slice does **not** send a key-change request, activate the replacement envelope, remove the old envelope, or claim rollback has been tested. Those steps remain blocked until a transaction model proves that a CA-success/local-persistence failure cannot strand the account.
+
+
+## Transactional account-key rollover execution
+
+The Development source now includes the CA-side execution boundary, but no live CA rollover has been performed in this workflow.
+
+For a prepared rollover bundle, Gateway now:
+
+1. revalidates the active account identity and decrypts the prepared replacement key;
+2. writes an immutable encrypted retired copy of the current active envelope;
+3. builds and durably stages a complete replacement active envelope in the same protected state directory;
+4. refuses to call the CA if unresolved pending activation state already exists;
+5. sends the RFC 8555 account-key rollover only after both recovery artifacts exist;
+6. removes the staged replacement and leaves the old active envelope unchanged when the CA rejects the rollover; and
+7. after CA success, atomically renames the staged replacement over the active envelope and synchronizes the state directory.
+
+The prepared rollover bundle and retired encrypted envelope are intentionally retained after success. The returned receipt contains fingerprints and basenames only and cannot authorize production cutover.
+
+A remote-success/local-activation failure remains a distributed-transaction uncertainty case. The replacement private key remains recoverable from the prepared bundle and the fully formed pending active envelope remains on disk if the final rename fails, but an approved operator recovery/probing workflow is still required before live use so Gateway can distinguish CA-success from CA-failure after process loss without blindly replaying the key-change request.
