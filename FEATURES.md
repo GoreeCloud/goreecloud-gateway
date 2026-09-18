@@ -22,7 +22,7 @@ Separate draft pull requests contain executable Gateway work. Current developmen
 - route-scoped TLS policy and certificate profiles;
 - provider-neutral certificate renewal and protected publication/rollback concepts;
 - provider-neutral DNS-01 challenge abstraction with a bounded Porkbun TXT-record adapter for exact create/cleanup operations;
-- RFC 8555 order-based renewal issuer with existing-account enforcement, DNS-01-only pending authorization, propagation confirmation, exact challenge cleanup, fresh certificate-key generation, CSR finalization, and handoff to the independent validation/staging boundary;\n- create-once encrypted ACME account-key envelopes using AES-256-GCM, CA-directory binding, public-key fingerprints, owner-only state roots/files, symlink rejection, authenticated metadata, and explicit no-overwrite rollover boundaries;\n- explicit two-phase ACME account registration planning/execution with exact TOS URL acceptance, short-lived plan binding, contact-set hashing, EAB requirement enforcement, requirement-drift detection, and privacy-safe registration receipts;
+- RFC 8555 order-based renewal issuer with existing-account enforcement, DNS-01-only pending authorization, propagation confirmation, exact challenge cleanup, fresh certificate-key generation, CSR finalization, and handoff to the independent validation/staging boundary;\n- create-once encrypted ACME account-key envelopes using AES-256-GCM, CA-directory binding, public-key fingerprints, owner-only state roots/files, symlink rejection, authenticated metadata, and explicit no-overwrite rollover boundaries;\n- explicit two-phase ACME account registration planning/execution with exact TOS URL acceptance, short-lived plan binding, contact-set hashing, EAB requirement enforcement, requirement-drift detection, and privacy-safe registration receipts;\n- protected file-based loading of the external 256-bit ACME account wrapping key with regular-file, permission, symlink-path, size, and exact-key-length validation, plus offline encrypted-envelope restore coverage;
 - exact-source migration-evidence contracts;
 - loopback isolated runtime acceptance;
 - isolated sustained-load/backpressure evidence;
@@ -37,7 +37,7 @@ These are **Validated development candidate** capabilities only at the exact hea
 ## Planned capabilities
 
 - complete production-grade HTTP/HTTPS listener/data plane;
-- production-safe operator/CLI wiring for the account-registration boundary, external wrapping-key integration/recovery, key rollover, plus live CA/Porkbun issuance and renewal acceptance over the now-established RFC 8555 DNS-01 issuer;
+- production-safe operator/CLI wiring for the account-registration boundary, approved wrapping-key provisioning/escrow and target recovery rehearsal, key rollover, plus live CA/Porkbun issuance and renewal acceptance over the now-established RFC 8555 DNS-01 issuer;
 - visual Services/Routes/Backends/Certificates/Discovery/Access/Traffic/Logs/Security/Health/Configuration/Settings administration;
 - complete staged configuration transactions and last-known-good activation behavior;
 - approved Docker discovery and proposed-publication workflows;

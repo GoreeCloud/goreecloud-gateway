@@ -206,3 +206,50 @@ func TestDescribeACMEAccountSignerAcceptsP256AndRejectsWeakRSA(t *testing.T) {
 		t.Fatal("1024-bit RSA ACME account key unexpectedly accepted")
 	}
 }
+
+func TestEncryptedACMEAccountKeyEnvelopeSupportsOfflineBackupRestore(t *testing.T) {
+	sourceRoot := filepath.Join(t.TempDir(), "source")
+	restoreRoot := filepath.Join(t.TempDir(), "restore")
+	key, err := GenerateACMEAccountKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrapping := wrappingKey(0x55)
+	defer clear(wrapping)
+	sourcePath, _, err := SaveEncryptedACMEAccountKey(
+		sourceRoot,
+		key,
+		wrapping,
+		"https://acme.example/directory",
+		time.Now().UTC(),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	backupBytes, err := os.ReadFile(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(restoreRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	restorePath := filepath.Join(restoreRoot, filepath.Base(sourcePath))
+	if err := os.WriteFile(restorePath, backupBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	restored, _, err := LoadEncryptedACMEAccountKey(restoreRoot, wrapping, "https://acme.example/directory")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, originalFingerprint, err := describeACMEAccountSigner(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, restoredFingerprint, err := describeACMEAccountSigner(restored)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if originalFingerprint != restoredFingerprint {
+		t.Fatal("offline restored ACME account key identity mismatch")
+	}
+}
