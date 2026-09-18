@@ -41,9 +41,14 @@
     "rollback"
   ],
   "mandatory_platform_integrations": [
-    "Glaze UI",
-    "Wardveil Security",
+    "GoreeCloud Manager",
     "Privacy Shield",
-    "Everkeep"
+    "Wardveil Security",
+    "Everkeep",
+    "Glaze UI",
+    "GoreeCloud Mesh",
+    "GoreeCloud Identity",
+    "GoreeCloud Policy",
+    "GoreeCloud Observability"
   ]
 }
