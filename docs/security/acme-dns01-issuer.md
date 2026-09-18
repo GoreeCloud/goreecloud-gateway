@@ -48,9 +48,9 @@ The default propagation waiter uses the configured/system Go DNS resolver with b
 
 ## Dependency provenance
 
-The Development candidate pins `golang.org/x/crypto v0.48.0` and imports only `golang.org/x/crypto/acme`. Provenance and the upstream BSD-3-Clause license are retained under `third_party/`.
+The Development candidate pins `golang.org/x/crypto v0.57.0` and imports only `golang.org/x/crypto/acme`. Provenance and the upstream BSD-3-Clause license are retained under `third_party/`.
 
-This selection preserves the repository's current Go 1.24 baseline. Dependency/toolchain advancement remains a separate controlled change and does not weaken the requirement for current vulnerability review before Stable qualification.
+Gateway now declares Go 1.27.1 for this candidate. The earlier Go 1.24 line was removed from the stabilization branch because it is outside the current supported Go release window. Current vulnerability review remains mandatory before Stable qualification.
 
 ## Remaining production gates
 
