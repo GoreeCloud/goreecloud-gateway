@@ -47,6 +47,7 @@ type acmeAccountRecognitionClient interface {
 }
 
 type acmeAccountRolloverProbeState struct {
+	stateRoot       string
 	directory       string
 	oldKey          crypto.Signer
 	newKey          crypto.Signer
@@ -121,6 +122,7 @@ func loadACMEAccountRolloverProbeState(root, bundlePath string, wrappingKey []by
 	}
 
 	return acmeAccountRolloverProbeState{
+		stateRoot:       stateRoot,
 		directory:       directory,
 		oldKey:          oldKey,
 		newKey:          newKey,

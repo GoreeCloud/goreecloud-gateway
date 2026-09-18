@@ -126,3 +126,17 @@ The privacy-safe report contains only the CA directory, probe time, old/new publ
 - `inconclusive`: a transport/protocol/response failure prevents a trustworthy classification.
 
 Transport or protocol failures are never converted into an authority guess. The probe does not activate a pending envelope, remove a retired envelope, delete a prepared bundle, retry rollover, or authorize production cutover. Recovery activation policy and operator wiring remain separate gates.
+
+
+## Local rollover recovery execution
+
+The Development source now includes a local recovery executor built on the read-only authority probe.
+
+Recovery always performs a fresh old/new-key probe immediately before local state mutation and requires an explicit expected outcome. Only these two outcomes are actionable:
+
+- `old-authoritative`: Gateway verifies the old active envelope still matches the prepared bundle, preserves an encrypted retired snapshot, removes the non-authoritative pending replacement, synchronizes the state directory, and verifies the old account envelope remains loadable.
+- `new-authoritative`: Gateway verifies the same state invariants, preserves the encrypted retired old envelope, atomically renames the pending replacement over the active envelope, synchronizes the state directory, and verifies the replacement envelope decrypts to the expected new fingerprint.
+
+`both-recognized`, `neither-recognized`, and `inconclusive` are hard stops and never mutate local state. A mismatch between the fresh probe result and the operator's explicit expected outcome is also a hard stop.
+
+Recovery receipts contain only directory/fingerprint/action/basename evidence and cannot authorize production cutover. Operator CLI wiring, live CA rehearsal, target secret provisioning, and target recovery rehearsal remain required before this path can be accepted for production use.
