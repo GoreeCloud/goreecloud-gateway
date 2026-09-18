@@ -107,3 +107,22 @@ For a prepared rollover bundle, Gateway now:
 The prepared rollover bundle and retired encrypted envelope are intentionally retained after success. The returned receipt contains fingerprints and basenames only and cannot authorize production cutover.
 
 A returned ACME error and a remote-success/local-activation failure are both treated as distributed-transaction uncertainty cases. The replacement private key remains recoverable from the prepared bundle and the fully formed pending active envelope remains on disk if the final rename fails, but an approved operator recovery/probing workflow is still required before live use so Gateway can distinguish CA-success from CA-failure after process loss without blindly replaying the key-change request.
+
+
+## Read-only rollover authority probe
+
+The Development source now includes the non-mutating recovery probe required by uncertain account-key rollover outcomes.
+
+The probe refuses to run unless the active account envelope, prepared rollover bundle, and pending replacement envelope form one consistent state: the active fingerprint must match the bundle's old-account fingerprint, and the pending envelope's key type/fingerprint must match the prepared replacement identity.
+
+It then creates independent ACME clients for the old and replacement keys and performs RFC 8555 existing-account lookup with each key. It never calls the key-change endpoint.
+
+The privacy-safe report contains only the CA directory, probe time, old/new public-key fingerprints, optional ACME account status strings, state-file basenames, and one of these classifications:
+
+- `old-authoritative`: old key is recognized; replacement key is not;
+- `new-authoritative`: replacement key is recognized; old key is not;
+- `both-recognized`: both keys are recognized and operator review remains required;
+- `neither-recognized`: neither key is recognized and operator review remains required; or
+- `inconclusive`: a transport/protocol/response failure prevents a trustworthy classification.
+
+Transport or protocol failures are never converted into an authority guess. The probe does not activate a pending envelope, remove a retired envelope, delete a prepared bundle, retry rollover, or authorize production cutover. Recovery activation policy and operator wiring remain separate gates.
