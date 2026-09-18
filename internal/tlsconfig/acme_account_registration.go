@@ -36,9 +36,9 @@ type ACMEAccountRegistrationPlan struct {
 }
 
 type ACMETermsAcceptance struct {
-	Accepted   bool
-	TermsURL   string
-	AcceptedAt time.Time
+	Accepted   bool      `json:"accepted"`
+	TermsURL   string    `json:"terms_url"`
+	AcceptedAt time.Time `json:"accepted_at"`
 }
 
 type ACMEAccountRegistrationReceipt struct {
