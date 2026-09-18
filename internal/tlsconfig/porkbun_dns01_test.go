@@ -19,33 +19,40 @@ func TestPorkbunDNS01PresentAndCleanupUseBoundedExactRecordOperations(t *testing
 		mu.Unlock()
 
 		if r.Method != http.MethodPost {
-			t.Fatalf("method=%s", r.Method)
+			t.Errorf("method=%s", r.Method)
+			return
 		}
 		if r.Header.Get("X-API-Key") != "pk-test" || r.Header.Get("X-Secret-API-Key") != "sk-test" {
-			t.Fatal("Porkbun credentials were not sent in headers")
+			t.Error("Porkbun credentials were not sent in headers")
+			return
 		}
 		if !strings.HasPrefix(r.Header.Get("Idempotency-Key"), "goreecloud-gateway-dns01-") {
-			t.Fatal("missing bounded idempotency key")
+			t.Error("missing bounded idempotency key")
+			return
 		}
 
 		switch r.URL.Path {
 		case "/dns/create/goreecloud.com":
 			var body map[string]any
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				t.Fatal(err)
+				t.Error(err)
+				return
 			}
 			if body["name"] != "_acme-challenge.search" || body["type"] != "TXT" || body["content"] != "challenge-value" || body["ttl"] != "600" {
-				t.Fatalf("unexpected create body: %#v", body)
+				t.Errorf("unexpected create body: %#v", body)
+				return
 			}
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"status":"SUCCESS","id":252962595}`))
 		case "/dns/delete/goreecloud.com/252962595":
 			var body map[string]any
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				t.Fatal(err)
+				t.Error(err)
+				return
 			}
 			if len(body) != 0 {
-				t.Fatalf("cleanup body was not empty: %#v", body)
+				t.Errorf("cleanup body was not empty: %#v", body)
+				return
 			}
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"status":"SUCCESS"}`))
@@ -82,10 +89,12 @@ func TestPorkbunDNS01WildcardUsesBaseName(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 		if body["name"] != "_acme-challenge" {
-			t.Fatalf("challenge record name=%v", body["name"])
+			t.Errorf("challenge record name=%v", body["name"])
+			return
 		}
 		_, _ = w.Write([]byte(`{"status":"SUCCESS","id":"44"}`))
 	}))
@@ -125,13 +134,29 @@ func TestPorkbunDNS01CleanupRejectsNonChallengeRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = provider.Cleanup(context.Background(), PorkbunDNS01Record{
-		Domain: "goreecloud.com",
-		Name:   "www",
-		ID:     "123",
+	err = provider.Cleanup(context.Background(), DNS01ChallengeRecord{
+		Provider: DNS01ProviderPorkbun,
+		Zone:     "goreecloud.com",
+		Name:     "www",
+		ID:       "123",
 	})
 	if err == nil {
 		t.Fatal("non-challenge record cleanup unexpectedly accepted")
+	}
+}
+
+func TestPorkbunDNS01CleanupRejectsDifferentProviderAndZone(t *testing.T) {
+	provider, err := newPorkbunDNS01Provider("goreecloud.com", "pk-test", "sk-test", "https://example.invalid/api/json/v3", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, record := range []DNS01ChallengeRecord{
+		{Provider: "other", Zone: "goreecloud.com", Name: "_acme-challenge", ID: "123"},
+		{Provider: DNS01ProviderPorkbun, Zone: "example.com", Name: "_acme-challenge", ID: "123"},
+	} {
+		if err := provider.Cleanup(context.Background(), record); err == nil {
+			t.Fatalf("foreign cleanup record unexpectedly accepted: %+v", record)
+		}
 	}
 }
 
@@ -162,7 +187,7 @@ func TestPorkbunDNS01RefusesRedirectsBeforeCredentialForwarding(t *testing.T) {
 
 func TestPorkbunDNS01RejectsOversizedAndFailedResponsesWithoutEchoingBody(t *testing.T) {
 	for _, tc := range []struct {
-		name string
+		name    string
 		handler http.HandlerFunc
 	}{
 		{
