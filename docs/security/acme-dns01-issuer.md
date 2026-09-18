@@ -71,3 +71,20 @@ Before Gateway can assume Caddy's certificate-management role, the exact candida
 - explicit production migration authorization.
 
 Until those gates pass, Caddy remains production-authoritative.
+
+
+## Account-key rollover preparation
+
+The Development source now includes a non-network preparation boundary for future RFC 8555 account-key rollover.
+
+Before any CA-side key-change operation can be implemented, Gateway can:
+
+- load and authenticate the currently active encrypted account-key envelope;
+- generate a fresh replacement account key;
+- encrypt the replacement key under the same externally supplied 256-bit wrapping key;
+- bind the immutable rollover bundle to the exact ACME directory, current account public-key SHA-256 fingerprint, replacement-key type, and replacement public-key SHA-256 fingerprint;
+- write the bundle as an owner-only direct child of the protected account-state root;
+- reject symlink paths, broad permissions, malformed metadata, wrong wrapping keys, and bundles copied outside the state root; and
+- fail closed if the active account-key fingerprint changes after preparation.
+
+This means a future CA key-change transaction can require recoverable replacement-key state to exist before it sends the RFC 8555 rollover request. The current slice does **not** send a key-change request, activate the replacement envelope, remove the old envelope, or claim rollback has been tested. Those steps remain blocked until a transaction model proves that a CA-success/local-persistence failure cannot strand the account.
