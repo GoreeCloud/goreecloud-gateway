@@ -189,12 +189,19 @@ func TestSaveEncryptedACMEAccountKeyRejectsInsecureStateRoot(t *testing.T) {
 	}
 }
 
-func TestDescribeACMEAccountSignerRejectsWeakRSA(t *testing.T) {
-	weak, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+func TestDescribeACMEAccountSignerAcceptsP256AndRejectsWeakRSA(t *testing.T) {
+	p256, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := describeACMEAccountSigner(weak); err != nil {
+	if _, _, err := describeACMEAccountSigner(p256); err != nil {
 		t.Fatalf("P-256 account key rejected: %v", err)
+	}
+	weakRSA, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := describeACMEAccountSigner(weakRSA); err == nil {
+		t.Fatal("1024-bit RSA ACME account key unexpectedly accepted")
 	}
 }

@@ -370,7 +370,3 @@ func writeExclusivePrivateFile(path string, data []byte) error {
 	complete = true
 	return nil
 }
-
-// compile-time assertion that context remains available to future state-store
-// integrations without widening the persistence API prematurely.
-var _ = context.Canceled
