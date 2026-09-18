@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	Schema              string               `json:"schema"`
+	TrustedProxies      []string             `json:"trusted_proxies,omitempty"`
 	Services            []Service            `json:"services"`
 	Routes              []Route              `json:"routes"`
 	Backends            []Backend            `json:"backends"`
@@ -70,6 +71,10 @@ func (c *Config) Validate() error {
 	if c.Schema != "goreecloud-gateway-config/v1" {
 		return fmt.Errorf("unsupported schema %q", c.Schema)
 	}
+	if _, err := ParseTrustedProxyPrefixes(c.TrustedProxies); err != nil {
+		return fmt.Errorf("trusted proxy configuration: %w", err)
+	}
+
 	services := map[string]Service{}
 	backends := map[string]Backend{}
 	profiles := map[string]CertificateProfile{}
