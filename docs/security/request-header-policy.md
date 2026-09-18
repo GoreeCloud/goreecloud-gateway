@@ -2,62 +2,85 @@
 
 ## Status
 
-Development security foundation only. The sanitizer and trusted-proxy address resolver in `internal/proxy` are not, by themselves, production ingress authority and do not change the current Caddy production boundary.
+Development runtime-enforcement candidate only. The Gateway proxy handler now applies the trusted-proxy and forwarding-identity policy described here, but this source state is not production ingress authority and does not change the current Caddy production boundary.
 
 ## Threat model
 
 An Internet or otherwise untrusted client can send forwarding and client-identity headers that resemble metadata normally added by a trusted reverse proxy. Passing those fields upstream unchanged can allow an application to mistake client-controlled data for Gateway-observed connection identity.
 
-GoreeCloud Gateway therefore needs a strict separation between:
+GoreeCloud Gateway therefore keeps a strict separation between:
 
 1. untrusted inbound request metadata;
 2. Gateway-observed transport context; and
-3. trusted forwarding metadata deliberately emitted by an accepted Gateway policy.
+3. trusted forwarding metadata deliberately emitted by Gateway after policy evaluation.
 
-## Development sanitizer
+## Runtime forwarding sanitization
 
-`SanitizeInboundProxyHeaders` removes:
+The authoritative Development proxy handler resolves client identity before backend dispatch and removes client-supplied forwarding identity from the request.
 
-- standard hop-by-hop request headers;
-- additional hop-by-hop fields named by the inbound `Connection` header;
-- the complete client-supplied `X-Forwarded-*` namespace, including uncommon variants rather than only a fixed subset;
-- other forwarding and client-address headers such as `Forwarded`, `X-Real-IP`, and provider-specific client-IP fields.
+`SanitizeInboundForwardingHeaders` removes:
 
-The sanitizer intentionally preserves ordinary application headers such as `Authorization`, `Cookie`, and application-specific metadata. Application authentication remains the responsibility of the application or its accepted authentication authority.
+- the complete client-supplied `X-Forwarded-*` namespace, including uncommon variants;
+- `Forwarded`;
+- `X-Real-IP`;
+- `X-Client-IP`;
+- `X-Original-Forwarded-For`;
+- `X-Cluster-Client-IP`;
+- `True-Client-IP`; and
+- `CF-Connecting-IP`.
 
-## Trusted-proxy client-address foundation
+The forwarding-only sanitizer intentionally preserves ordinary application headers such as `Authorization`, `Cookie`, and application-specific metadata. Application authentication remains the responsibility of the application or its accepted authentication authority.
 
-`TrustedProxyPolicy` adds a separate, non-wired client-address derivation primitive for future reviewed ingress integration.
+`SanitizeInboundProxyHeaders` remains available for contexts that require complete hop-by-hop cleanup, but the runtime reverse-proxy path does not use it before upgrade handling.
 
-The policy:
+## Trusted-proxy runtime policy
 
-- accepts only explicitly configured exact IP addresses or CIDR ranges as trusted proxy peers;
-- rejects malformed, empty, unspecified, multicast, zoned, and IPv4-mapped IPv6 trust entries;
-- treats an untrusted direct peer as the client and ignores any supplied forwarding chain;
-- for an explicitly trusted direct peer, parses `X-Forwarded-For` strictly as an IP-only chain and walks it from right to left;
-- skips only addresses that are themselves inside the configured trusted-proxy set;
-- returns the first untrusted address as the candidate client identity;
-- fails closed when a trusted peer supplies no chain, a malformed chain, or a chain containing only trusted proxy addresses;
-- supports ordinary IPv4 and IPv6 peers without converting a forwarding header into authority by itself.
+The configuration-level `trusted_proxies` list accepts reviewed exact IP addresses or CIDR ranges. Configuration validation rejects malformed, empty, unspecified, multicast, zoned, and IPv4-mapped IPv6 trust entries before a normal Gateway startup or reload can accept them.
 
-This primitive does not read configuration from the environment, does not mutate requests, does not emit forwarding headers, and is not invoked by the authoritative proxy handler in this Development slice. A later integration must bind the reviewed trusted-proxy configuration to the accepted listener/runtime and prove the sequencing between peer validation, client-address derivation, sanitization, and backend forwarding.
+`TrustedProxyPolicy` then applies the following request-time rules:
 
-## No implicit trust reconstruction
+- an untrusted direct peer is treated as the client and any supplied forwarding chain is ignored;
+- an explicitly trusted direct peer must supply a valid IP-only `X-Forwarded-For` chain;
+- the chain is evaluated from right to left;
+- only addresses inside the configured trusted-proxy set are skipped;
+- the first untrusted address becomes the resolved client address;
+- a trusted peer with missing, malformed, or entirely trusted forwarding data fails closed; and
+- IPv4 and IPv6 peers are supported without making a forwarding header authoritative by itself.
 
-The current source still does not create replacement `Forwarded` or `X-Forwarded-*` values. A later runtime integration must derive any trusted forwarding metadata from accepted connection context and an explicit Gateway policy. Client-supplied values must never be used as the source of that identity unless the direct peer and forwarding chain have passed the separately configured trusted-proxy policy.
+The proxy handler stores the validated Gateway configuration and trusted-proxy policy as one runtime state so a normal reload does not deliberately publish a new configuration with a mismatched trust policy.
 
-## Required runtime integration gates
+## Gateway-derived forwarding metadata
 
-Before these primitives are wired into authoritative ingress, the Gateway runtime must define and test:
+After resolving the accepted client address and removing client-controlled forwarding identity, the Development proxy emits bounded replacement metadata for the backend:
 
-- the exact point at which peer trust and client-address derivation occur;
-- the exact point at which sanitization occurs before backend dispatch;
-- the reviewed source and lifecycle for trusted-proxy CIDRs;
-- client-address derivation for IPv4 and IPv6 across direct and proxied connections;
-- TLS scheme and original-host derivation;
-- WebSocket and HTTP upgrade behavior after hop-by-hop normalization;
-- privacy-minimized observability for forwarded identity;
-- Caddy parity tests and migration evidence;
-- rollback behavior and independent runtime acceptance.
+- `X-Forwarded-For` from the resolved client address;
+- `X-Forwarded-Host` from the original inbound request host; and
+- `X-Forwarded-Proto` from the observed inbound transport (`https` only when the request reached the handler with TLS state, otherwise `http`).
 
-Until those gates are satisfied, Caddy remains production-authoritative and this code remains a bounded native security primitive.
+The original inbound Host is preserved toward the backend instead of being replaced by the backend target host.
+
+The runtime does not currently emit RFC `Forwarded`; applications must not infer authority from a missing or client-supplied `Forwarded` field.
+
+## Upgrade and streaming safety
+
+Go `net/http/httputil.ReverseProxy` remains responsible for hop-by-hop normalization and upgrade forwarding. Gateway's runtime security path therefore removes untrusted forwarding identity without preemptively deleting the `Connection` and `Upgrade` semantics needed for supported WebSocket and other HTTP upgrades.
+
+The repository retains automated upgrade-tunneling and streaming tests. Exact-head CI must remain green before this source increment can be treated as validated Development evidence.
+
+## Remaining production gates
+
+This source integration closes only the repository-level wiring gap. Before Gateway can replace Caddy on the VPS, the exact candidate still requires:
+
+- exact-head source, Platform Contract, isolated runtime, and sustained-load validation;
+- current nine-system Integral Platform System evaluation and accepted evidence where applicable;
+- target-VPS review of the actual Caddy configuration, listeners, certificates, Docker networks, host firewall, and published routes;
+- direct and trusted-proxy IPv4/IPv6 acceptance in the target topology;
+- TLS scheme and original-host acceptance against representative backends;
+- WebSocket, streaming, and any applicable gRPC behavior on the target environment;
+- privacy-minimized observability for client and forwarding identity;
+- Caddy route, certificate, redirect, TLS, and error-behavior parity evidence;
+- current backup and recovery verification;
+- a reversible listener-transfer and rollback rehearsal; and
+- explicit production migration approval followed by post-cutover verification.
+
+Until those gates are satisfied, Caddy remains production-authoritative and GoreeCloud Gateway remains a Development candidate.
