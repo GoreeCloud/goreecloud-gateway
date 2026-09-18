@@ -64,7 +64,7 @@ func TestPorkbunDNS01PresentAndCleanupUseBoundedExactRecordOperations(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if record.Domain != "goreecloud.com" || record.Name != "_acme-challenge.search" || record.ID != "252962595" {
+	if record.Provider != DNS01ProviderPorkbun || record.Zone != "goreecloud.com" || record.Name != "_acme-challenge.search" || record.ID != "252962595" {
 		t.Fatalf("unexpected challenge record: %+v", record)
 	}
 	if err := provider.Cleanup(context.Background(), record); err != nil {
