@@ -42,9 +42,11 @@ type acmeAccountKeyRolloverClient interface {
 // Before any CA mutation, Gateway writes two recoverable local artifacts:
 // an immutable encrypted copy of the old active envelope and a complete staged
 // replacement active envelope. Only then is the CA rollover request sent.
-// CA failure removes the staged replacement and leaves the active envelope
-// unchanged. CA success is followed by an atomic same-directory rename over
-// the active envelope.
+// A returned CA error is treated as an uncertain distributed outcome: the
+// staged replacement is retained and the request must not be blindly replayed
+// until read-only recovery probing establishes whether the old or new account
+// key is authoritative. Confirmed CA success is followed by an atomic
+// same-directory rename over the active envelope.
 //
 // This function does not authorize production cutover and it does not delete
 // the prepared bundle or retired envelope after success.
@@ -146,17 +148,9 @@ func executePreparedACMEAccountKeyRollover(
 		return receipt, fmt.Errorf("gateway tls: stage replacement ACME account envelope: %w", err)
 	}
 
-	caSucceeded := false
-	defer func() {
-		if !caSucceeded {
-			_ = os.Remove(pendingPath)
-		}
-	}()
-
 	if err := client.AccountKeyRollover(ctx, newKey); err != nil {
-		return receipt, fmt.Errorf("gateway tls: ACME account-key rollover rejected by CA: %w", err)
+		return receipt, fmt.Errorf("gateway tls: ACME account-key rollover outcome is unconfirmed; pending replacement state was retained and the request must not be blindly replayed before read-only recovery probing: %w", err)
 	}
-	caSucceeded = true
 
 	if err := os.Rename(pendingPath, activePath); err != nil {
 		return receipt, fmt.Errorf("gateway tls: CA account-key rollover succeeded but local active-envelope activation failed; prepared and pending replacement state remain for recovery: %w", err)

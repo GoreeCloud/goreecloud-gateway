@@ -102,7 +102,7 @@ func TestExecutePreparedACMEAccountKeyRolloverStagesRecoveryBeforeCAAndActivates
 	}
 }
 
-func TestExecutePreparedACMEAccountKeyRolloverCAFailureLeavesActiveOldAndRemovesPending(t *testing.T) {
+func TestExecutePreparedACMEAccountKeyRolloverCAErrorLeavesActiveOldAndRetainsPendingForRecovery(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "accounts")
 	wrapping := wrappingKey(0x82)
 	defer clear(wrapping)
@@ -132,8 +132,14 @@ func TestExecutePreparedACMEAccountKeyRolloverCAFailureLeavesActiveOldAndRemoves
 		t.Fatal("CA failure changed active account key")
 	}
 	pending := acmePendingAccountEnvelopePath(root, directory, bundle.NewAccountPublicKeySHA256)
-	if _, err := os.Stat(pending); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("pending replacement was not removed after CA failure: %v", err)
+	if info, err := os.Stat(pending); err != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("pending replacement was not retained after uncertain CA outcome: info=%v err=%v", info, err)
+	}
+	if _, err := executePreparedACMEAccountKeyRollover(context.Background(), root, bundlePath, wrapping, directory, client, time.Now().UTC()); err == nil {
+		t.Fatal("unresolved pending activation unexpectedly allowed blind rollover replay")
+	}
+	if client.calls != 1 {
+		t.Fatalf("CA rollover was replayed despite unresolved outcome: calls=%d", client.calls)
 	}
 }
 
