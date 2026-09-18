@@ -37,17 +37,19 @@ Required migration evidence includes configuration/route parity, TLS and renewal
 
 ## GoreeCloud platform requirements
 
-Stable qualification requires substantive, current accepted integration with:
+Stable qualification requires substantive, current accepted evaluation and integration with all nine Integral Platform Systems:
 
-- Glaze UI for the administrative application and adaptive/accessibility contract;
-- Wardveil Security for exposure, listener, route, TLS, certificate, backend, and configuration-integrity security state;
+- GoreeCloud Manager for bounded administration, lifecycle, operational visibility, and approved control-plane workflows;
 - Privacy Shield for minimal logging, redaction, retention, sensitive-header protection, client-information minimization, and privacy-safe metrics;
+- Wardveil Security for exposure, listener, route, TLS, certificate, backend, and configuration-integrity security state;
 - Everkeep for configuration snapshots, export/import, known-good retention, backup/restore, rollback, and disaster-recovery evidence;
+- Glaze UI for the administrative application and adaptive/accessibility contract;
 - GoreeCloud Mesh for governed service coordination where applicable;
 - GoreeCloud Identity for approved administrative identity/authentication without making Gateway the platform identity provider;
-- GoreeCloud governance for publication and production-cutover authority.
+- GoreeCloud Policy for shared policy decisions and enforcement coordination while preserving Gateway-owned routing/publication rule authority; and
+- GoreeCloud Observability for health, metrics, diagnostics, performance, dependency state, freshness, provenance, and operational evidence.
 
-Decorative identities do not satisfy these integration gates.
+GoreeCloud governance separately controls publication and production-cutover authorization. Decorative identities, labels, or metadata do not satisfy these integration gates.
 
 ## Canonical identity
 
