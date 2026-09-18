@@ -2,7 +2,6 @@ package tlsconfig
 
 import (
 	"bytes"
-	"context"
 	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
