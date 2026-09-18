@@ -22,15 +22,6 @@ const (
 
 var porkbunRecordIDPattern = regexp.MustCompile(`^[0-9]+$`)
 
-// PorkbunDNS01Record is the minimum state required to remove one challenge
-// record that Gateway itself created. It intentionally omits API credentials
-// and the challenge value.
-type PorkbunDNS01Record struct {
-	Domain string `json:"domain"`
-	Name   string `json:"name"`
-	ID     string `json:"id"`
-}
-
 // PorkbunDNS01Provider presents and removes ACME DNS-01 TXT records in one
 // explicitly configured Porkbun-managed zone. It is intentionally not a
 // general-purpose DNS client.
@@ -84,24 +75,24 @@ func newPorkbunDNS01Provider(domain, apiKey, secretAPIKey, baseURL string, clien
 // Present creates exactly one TXT record under _acme-challenge for a DNS name
 // inside the provider's configured zone. It returns only the state required for
 // exact-record cleanup.
-func (p *PorkbunDNS01Provider) Present(ctx context.Context, dnsName, value string) (PorkbunDNS01Record, error) {
+func (p *PorkbunDNS01Provider) Present(ctx context.Context, dnsName, value string) (DNS01ChallengeRecord, error) {
 	if p == nil {
-		return PorkbunDNS01Record{}, errors.New("gateway tls: Porkbun DNS-01 provider is required")
+		return DNS01ChallengeRecord{}, errors.New("gateway tls: Porkbun DNS-01 provider is required")
 	}
 	if ctx == nil {
-		return PorkbunDNS01Record{}, errors.New("gateway tls: Porkbun DNS-01 context is required")
+		return DNS01ChallengeRecord{}, errors.New("gateway tls: Porkbun DNS-01 context is required")
 	}
 	if err := ctx.Err(); err != nil {
-		return PorkbunDNS01Record{}, fmt.Errorf("gateway tls: Porkbun DNS-01 context unavailable: %w", err)
+		return DNS01ChallengeRecord{}, fmt.Errorf("gateway tls: Porkbun DNS-01 context unavailable: %w", err)
 	}
 	challengeValue := strings.TrimSpace(value)
 	if challengeValue == "" || len(challengeValue) > 2048 || strings.ContainsAny(challengeValue, "\r\n") {
-		return PorkbunDNS01Record{}, errors.New("gateway tls: Porkbun DNS-01 challenge value is invalid")
+		return DNS01ChallengeRecord{}, errors.New("gateway tls: Porkbun DNS-01 challenge value is invalid")
 	}
 
 	recordName, err := challengeRecordName(dnsName, p.domain)
 	if err != nil {
-		return PorkbunDNS01Record{}, err
+		return DNS01ChallengeRecord{}, err
 	}
 	body := struct {
 		Name    string `json:"name"`
@@ -117,17 +108,17 @@ func (p *PorkbunDNS01Provider) Present(ctx context.Context, dnsName, value strin
 
 	response, err := p.write(ctx, "/dns/create/"+url.PathEscape(p.domain), body, porkbunIdempotencyKey("create", p.domain, recordName, challengeValue))
 	if err != nil {
-		return PorkbunDNS01Record{}, err
+		return DNS01ChallengeRecord{}, err
 	}
 	id, err := parsePorkbunRecordID(response.ID)
 	if err != nil {
-		return PorkbunDNS01Record{}, err
+		return DNS01ChallengeRecord{}, err
 	}
-	return PorkbunDNS01Record{Domain: p.domain, Name: recordName, ID: id}, nil
+	return DNS01ChallengeRecord{Provider: DNS01ProviderPorkbun, Zone: p.domain, Name: recordName, ID: id}, nil
 }
 
 // Cleanup deletes only the exact Porkbun record ID returned by Present.
-func (p *PorkbunDNS01Provider) Cleanup(ctx context.Context, record PorkbunDNS01Record) error {
+func (p *PorkbunDNS01Provider) Cleanup(ctx context.Context, record DNS01ChallengeRecord) error {
 	if p == nil {
 		return errors.New("gateway tls: Porkbun DNS-01 provider is required")
 	}
@@ -137,7 +128,7 @@ func (p *PorkbunDNS01Provider) Cleanup(ctx context.Context, record PorkbunDNS01R
 	if err := ctx.Err(); err != nil {
 		return fmt.Errorf("gateway tls: Porkbun DNS-01 context unavailable: %w", err)
 	}
-	if record.Domain != p.domain {
+	if record.Provider != DNS01ProviderPorkbun {\n\t\treturn errors.New(\"gateway tls: Porkbun DNS-01 cleanup record belongs to a different provider\")\n\t}\n\tif record.Zone != p.domain {
 		return errors.New("gateway tls: Porkbun DNS-01 cleanup record belongs to a different zone")
 	}
 	if !validChallengeRecordName(record.Name) {
