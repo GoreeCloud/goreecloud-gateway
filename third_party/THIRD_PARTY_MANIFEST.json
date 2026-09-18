@@ -1,0 +1,18 @@
+{
+  "schema": "goreecloud-third-party-manifest/v1",
+  "reviewed_at": "2026-09-18",
+  "components": [
+    {
+      "name": "golang.org/x/crypto/acme",
+      "module": "golang.org/x/crypto",
+      "version": "v0.48.0",
+      "license": "BSD-3-Clause",
+      "integration_type": "native_go_module",
+      "modified": false,
+      "upstream": "https://go.googlesource.com/crypto",
+      "purpose": "RFC 8555 ACME protocol client primitives used behind GoreeCloud Gateway-owned certificate orchestration",
+      "scope": "Only package golang.org/x/crypto/acme is imported by Gateway source.",
+      "selection": "Newest reviewed golang.org/x/crypto release whose module declares Go 1.24 compatibility; later reviewed releases require newer Go toolchains and are not introduced by this bounded certificate slice."
+    }
+  ]
+}

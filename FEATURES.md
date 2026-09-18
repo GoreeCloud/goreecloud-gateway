@@ -22,6 +22,7 @@ Separate draft pull requests contain executable Gateway work. Current developmen
 - route-scoped TLS policy and certificate profiles;
 - provider-neutral certificate renewal and protected publication/rollback concepts;
 - provider-neutral DNS-01 challenge abstraction with a bounded Porkbun TXT-record adapter for exact create/cleanup operations;
+- RFC 8555 order-based renewal issuer with existing-account enforcement, DNS-01-only pending authorization, propagation confirmation, exact challenge cleanup, fresh certificate-key generation, CSR finalization, and handoff to the independent validation/staging boundary;
 - exact-source migration-evidence contracts;
 - loopback isolated runtime acceptance;
 - isolated sustained-load/backpressure evidence;
@@ -36,7 +37,7 @@ These are **Validated development candidate** capabilities only at the exact hea
 ## Planned capabilities
 
 - complete production-grade HTTP/HTTPS listener/data plane;
-- production-safe RFC 8555 ACME account/order/challenge/CSR/certificate lifecycle over the now-established DNS-01 provider boundary;
+- production-safe ACME account registration/persistence/rollover plus live CA/Porkbun issuance and renewal acceptance over the now-established RFC 8555 DNS-01 issuer;
 - visual Services/Routes/Backends/Certificates/Discovery/Access/Traffic/Logs/Security/Health/Configuration/Settings administration;
 - complete staged configuration transactions and last-known-good activation behavior;
 - approved Docker discovery and proposed-publication workflows;
@@ -53,7 +54,7 @@ These are **Validated development candidate** capabilities only at the exact hea
 - production-representative load/SLO/backpressure evidence;
 - target-environment backup/restore and rollback;
 - production certificate/TLS renewal evidence;
-- target-environment Privacy Shield, Wardveil Security, Everkeep, Mesh, Identity, Glaze UI, and governance integration evidence;
+- target-environment GoreeCloud Manager, Privacy Shield, Wardveil Security, Everkeep, Glaze UI, GoreeCloud Mesh, GoreeCloud Identity, GoreeCloud Policy, and GoreeCloud Observability integration evidence, plus separately governed publication/cutover authorization;
 - explicit production migration approval and Stable qualification.
 
 ## Evidence rule
