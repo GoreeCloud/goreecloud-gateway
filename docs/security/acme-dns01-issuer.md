@@ -58,7 +58,7 @@ The Go vulnerability database currently associates `GO-2026-5932` with the `gola
 
 Before Gateway can assume Caddy's certificate-management role, the exact candidate still requires:
 
-- approved ACME account creation and protected persistence/recovery;
+- approved ACME account registration plus protected external wrapping-key provisioning, escrow/recovery, and restore testing;
 - explicit terms-of-service review and acceptance handling;
 - live Porkbun DNS-01 rehearsal using scoped runtime-only credentials;
 - authoritative/public DNS propagation acceptance on `goreecloud-vps-01`;

@@ -130,9 +130,9 @@ func NewACMERenewalIssuer(accountKey crypto.Signer, directoryURL string, dns DNS
 		return nil, errors.New("gateway tls: DNS-01 provider is required")
 	}
 
-	directory, err := url.Parse(strings.TrimSpace(directoryURL))
-	if err != nil || directory.Scheme != "https" || directory.Host == "" || directory.User != nil || directory.RawQuery != "" || directory.Fragment != "" {
-		return nil, errors.New("gateway tls: ACME directory must be an absolute HTTPS URL")
+	directory, err := normalizeACMEDirectoryURL(directoryURL)
+	if err != nil {
+		return nil, err
 	}
 
 	if propagation == nil {
@@ -149,7 +149,7 @@ func NewACMERenewalIssuer(accountKey crypto.Signer, directoryURL string, dns DNS
 	client := &acme.Client{
 		Key:          accountKey,
 		HTTPClient:   &safeHTTPClient,
-		DirectoryURL: directory.String(),
+		DirectoryURL: directory,
 		UserAgent:    "GoreeCloud-Gateway/Development",
 	}
 	return newACMERenewalIssuer(client, dns, propagation), nil
