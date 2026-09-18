@@ -41,8 +41,8 @@ type RuntimeStatus struct {
 }
 
 // StatusSnapshot returns aggregate runtime evidence suitable for later
-// Wardveil Security, Privacy Shield, Monitor, and Manager adapters without
-// exposing request content or infrastructure identifiers.
+// Wardveil Security, Privacy Shield, Observability, and Manager adapters
+// without exposing request content or infrastructure identifiers.
 func (h *Handler) StatusSnapshot(now time.Time) RuntimeStatus {
 	status := RuntimeStatus{
 		Schema:             RuntimeStatusSchemaV1,
@@ -50,10 +50,11 @@ func (h *Handler) StatusSnapshot(now time.Time) RuntimeStatus {
 		Availability:       AvailabilityUnknown,
 		AvailabilityReason: AvailabilityReasonConfigurationUnavailable,
 	}
-	cfg := h.cfg.Load()
-	if cfg == nil {
+	runtime := h.state.Load()
+	if runtime == nil || runtime.cfg == nil {
 		return status
 	}
+	cfg := runtime.cfg
 
 	status.Services = len(cfg.Services)
 	for _, route := range cfg.Routes {
@@ -67,13 +68,13 @@ func (h *Handler) StatusSnapshot(now time.Time) RuntimeStatus {
 		}
 		status.Backends++
 		h.healthMu.RLock()
-		state, ok := h.healthState[backend.ID]
+		healthState, ok := h.healthState[backend.ID]
 		h.healthMu.RUnlock()
 		if !ok {
 			status.Unknown++
 			continue
 		}
-		if state.result.Healthy {
+		if healthState.result.Healthy {
 			status.HealthyBackends++
 		} else {
 			status.Unhealthy++
