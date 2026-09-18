@@ -114,7 +114,12 @@ func (p *PorkbunDNS01Provider) Present(ctx context.Context, dnsName, value strin
 	if err != nil {
 		return DNS01ChallengeRecord{}, err
 	}
-	return DNS01ChallengeRecord{Provider: DNS01ProviderPorkbun, Zone: p.domain, Name: recordName, ID: id}, nil
+	return DNS01ChallengeRecord{
+		Provider: DNS01ProviderPorkbun,
+		Zone:     p.domain,
+		Name:     recordName,
+		ID:       id,
+	}, nil
 }
 
 // Cleanup deletes only the exact Porkbun record ID returned by Present.
@@ -128,7 +133,10 @@ func (p *PorkbunDNS01Provider) Cleanup(ctx context.Context, record DNS01Challeng
 	if err := ctx.Err(); err != nil {
 		return fmt.Errorf("gateway tls: Porkbun DNS-01 context unavailable: %w", err)
 	}
-	if record.Provider != DNS01ProviderPorkbun {\n\t\treturn errors.New(\"gateway tls: Porkbun DNS-01 cleanup record belongs to a different provider\")\n\t}\n\tif record.Zone != p.domain {
+	if record.Provider != DNS01ProviderPorkbun {
+		return errors.New("gateway tls: Porkbun DNS-01 cleanup record belongs to a different provider")
+	}
+	if record.Zone != p.domain {
 		return errors.New("gateway tls: Porkbun DNS-01 cleanup record belongs to a different zone")
 	}
 	if !validChallengeRecordName(record.Name) {
