@@ -21,6 +21,7 @@ Separate draft pull requests contain executable Gateway work. Current developmen
 - streaming and upgraded-connection handling;
 - route-scoped TLS policy and certificate profiles;
 - provider-neutral certificate renewal and protected publication/rollback concepts;
+- provider-neutral DNS-01 challenge abstraction with a bounded Porkbun TXT-record adapter for exact create/cleanup operations;
 - exact-source migration-evidence contracts;
 - loopback isolated runtime acceptance;
 - isolated sustained-load/backpressure evidence;
@@ -28,14 +29,14 @@ Separate draft pull requests contain executable Gateway work. Current developmen
 - configuration-parity fingerprints and migration-source identity contracts;
 - local Infrastructure Status v1 and publication preflight/validation contracts;
 - privacy-minimized status/evidence outputs;
-- platform-system acceptance gates for Glaze UI, Wardveil Security, Privacy Shield, Everkeep, Mesh, Identity, and governance.
+- platform-system acceptance gates for GoreeCloud Manager, Privacy Shield, Wardveil Security, Everkeep, Glaze UI, GoreeCloud Mesh, GoreeCloud Identity, GoreeCloud Policy, and GoreeCloud Observability, with governance remaining separately authoritative for publication/cutover approval.
 
 These are **Validated development candidate** capabilities only at the exact heads/workflow runs documented in the authoritative Gateway project specification and changelog. They are not accepted `main` behavior until their own PR review/merge gates are satisfied.
 
 ## Planned capabilities
 
 - complete production-grade HTTP/HTTPS listener/data plane;
-- production-safe automatic HTTPS/ACME and certificate lifecycle;
+- production-safe RFC 8555 ACME account/order/challenge/CSR/certificate lifecycle over the now-established DNS-01 provider boundary;
 - visual Services/Routes/Backends/Certificates/Discovery/Access/Traffic/Logs/Security/Health/Configuration/Settings administration;
 - complete staged configuration transactions and last-known-good activation behavior;
 - approved Docker discovery and proposed-publication workflows;
