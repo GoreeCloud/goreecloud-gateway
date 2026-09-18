@@ -3,10 +3,8 @@ package tlsconfig
 import (
 	"context"
 	"crypto"
-	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -117,39 +115,15 @@ type ACMERenewalIssuer struct {
 // registering an ACME account or accepting terms automatically. accountKey must
 // already correspond to a registered account at directoryURL.
 func NewACMERenewalIssuer(accountKey crypto.Signer, directoryURL string, dns DNS01Provider, propagation DNS01PropagationWaiter, httpClient *http.Client) (*ACMERenewalIssuer, error) {
-	if accountKey == nil {
-		return nil, errors.New("gateway tls: ACME account key is required")
-	}
-	switch accountKey.Public().(type) {
-	case *ecdsa.PublicKey, *rsa.PublicKey:
-	default:
-		return nil, errors.New("gateway tls: ACME account key must be ECDSA or RSA")
-	}
 	if dns == nil {
 		return nil, errors.New("gateway tls: DNS-01 provider is required")
 	}
-
-	directory, err := normalizeACMEDirectoryURL(directoryURL)
+	client, err := newACMEProtocolClient(accountKey, directoryURL, httpClient)
 	if err != nil {
 		return nil, err
 	}
-
 	if propagation == nil {
 		propagation = ResolverDNS01PropagationWaiter{}
-	}
-	if httpClient == nil {
-		httpClient = &http.Client{}
-	}
-	safeHTTPClient := *httpClient
-	safeHTTPClient.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
-
-	client := &acme.Client{
-		Key:          accountKey,
-		HTTPClient:   &safeHTTPClient,
-		DirectoryURL: directory,
-		UserAgent:    "GoreeCloud-Gateway/Development",
 	}
 	return newACMERenewalIssuer(client, dns, propagation), nil
 }
