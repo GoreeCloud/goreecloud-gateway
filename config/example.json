@@ -1,5 +1,6 @@
 {
   "schema": "goreecloud-gateway-config/v1",
+  "trusted_proxies": [],
   "services": [
     {
       "id": "example-service",
