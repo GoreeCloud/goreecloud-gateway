@@ -13,6 +13,18 @@
       "purpose": "RFC 8555 ACME protocol client primitives used behind GoreeCloud Gateway-owned certificate orchestration",
       "scope": "Only package golang.org/x/crypto/acme is imported by Gateway source.",
       "selection": "Current reviewed golang.org/x/crypto release at this stabilization point. Gateway now uses supported Go 1.27.1 rather than retaining the out-of-support Go 1.24 line solely for dependency compatibility."
+    },
+    {
+      "name": "golang.org/x/vuln/cmd/govulncheck",
+      "module": "golang.org/x/vuln",
+      "version": "v1.8.0",
+      "license": "BSD-3-Clause",
+      "integration_type": "pinned_ci_security_tool",
+      "modified": false,
+      "upstream": "https://go.googlesource.com/vuln",
+      "purpose": "Reachability-based Go vulnerability scanning for Gateway source and its dependency graph",
+      "scope": "CI-only tool installed at an exact version; not linked into Gateway runtime artifacts.",
+      "selection": "Current reviewed govulncheck release at this stabilization point, run with the exact supported Go version declared by Gateway."
     }
   ]
 }
