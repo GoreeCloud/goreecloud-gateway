@@ -20,9 +20,9 @@ import (
 )
 
 const (
-	maxBackendAttempts     = 3
-	maxBackendConcurrency  = 128
-	healthRefreshInterval  = 10 * time.Second
+	maxBackendAttempts    = 3
+	maxBackendConcurrency = 128
+	healthRefreshInterval = 10 * time.Second
 )
 
 type healthChecker interface {
@@ -34,8 +34,13 @@ type cachedHealth struct {
 	checkedAt time.Time
 }
 
+type runtimeState struct {
+	cfg                *config.Config
+	trustedProxyPolicy TrustedProxyPolicy
+}
+
 type Handler struct {
-	cfg       atomic.Pointer[config.Config]
+	state     atomic.Pointer[runtimeState]
 	transport http.RoundTripper
 	checker   healthChecker
 
@@ -70,7 +75,13 @@ func New(cfg *config.Config) *Handler {
 		healthCtx:   healthCtx,
 		healthStop:  healthStop,
 	}
-	handler.cfg.Store(cfg)
+	if err := handler.storeRuntimeState(cfg); err != nil {
+		// Config.Load rejects invalid trusted-proxy entries before production
+		// construction. A direct caller that bypasses validation still fails
+		// closed to a policy that trusts no forwarding peer.
+		slog.Error("trusted proxy configuration rejected; using fail-closed direct-peer policy", "error", err)
+		handler.state.Store(&runtimeState{cfg: cfg, trustedProxyPolicy: TrustedProxyPolicy{}})
+	}
 	go handler.healthLoop()
 	return handler
 }
@@ -85,10 +96,22 @@ func (h *Handler) Close() {
 }
 
 func (h *Handler) Reload(cfg *config.Config) {
-	h.cfg.Store(cfg)
+	if err := h.storeRuntimeState(cfg); err != nil {
+		slog.Warn("proxy runtime reload rejected; retaining last known-good configuration", "error", err)
+		return
+	}
 	h.healthMu.Lock()
 	clear(h.healthState)
 	h.healthMu.Unlock()
+}
+
+func (h *Handler) storeRuntimeState(cfg *config.Config) error {
+	policy, err := NewTrustedProxyPolicy(cfg.TrustedProxies)
+	if err != nil {
+		return err
+	}
+	h.state.Store(&runtimeState{cfg: cfg, trustedProxyPolicy: policy})
+	return nil
 }
 
 func (h *Handler) healthLoop() {
@@ -99,9 +122,9 @@ func (h *Handler) healthLoop() {
 		case <-h.healthCtx.Done():
 			return
 		case <-ticker.C:
-			cfg := h.cfg.Load()
-			if cfg != nil {
-				h.refreshBackends(h.healthCtx, cfg.Backends)
+			state := h.state.Load()
+			if state != nil && state.cfg != nil {
+				h.refreshBackends(h.healthCtx, state.cfg.Backends)
 			}
 		}
 	}
@@ -194,13 +217,25 @@ func (h *Handler) rotateCandidates(serviceID string, candidates []config.Backend
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	cfg := h.cfg.Load()
-	if cfg == nil {
+	state := h.state.Load()
+	if state == nil || state.cfg == nil {
 		http.Error(w, "gateway unavailable", http.StatusServiceUnavailable)
 		return
 	}
 
-	match, ok := routing.ResolveCandidates(cfg, req)
+	clientAddress, err := state.trustedProxyPolicy.ResolveClientAddress(req.RemoteAddr, req.Header.Get("X-Forwarded-For"))
+	if err != nil {
+		slog.Warn("forwarding identity rejected", "error", err)
+		http.Error(w, "invalid forwarding metadata", http.StatusBadRequest)
+		return
+	}
+
+	// Remove all client-supplied forwarding identity before routing or backend
+	// dispatch. ReverseProxy remains responsible for hop-by-hop normalization so
+	// Upgrade/WebSocket semantics are not destroyed by the security sanitizer.
+	SanitizeInboundForwardingHeaders(req.Header)
+
+	match, ok := routing.ResolveCandidates(state.cfg, req)
 	if !ok {
 		http.NotFound(w, req)
 		return
@@ -219,13 +254,28 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	proxyOrigin := &url.URL{Scheme: first.Scheme, Host: first.Host}
-	proxy := httputil.NewSingleHostReverseProxy(proxyOrigin)
-	proxy.Transport = &failoverTransport{
-		base:        h.transport,
-		candidates:  candidates,
-		maxAttempts: maxBackendAttempts,
+	originalHost := req.Host
+	forwardedProto := "http"
+	if req.TLS != nil {
+		forwardedProto = "https"
 	}
-	proxy.FlushInterval = -1
+
+	proxy := &httputil.ReverseProxy{
+		Rewrite: func(proxyRequest *httputil.ProxyRequest) {
+			proxyRequest.SetURL(proxyOrigin)
+			proxyRequest.Out.Host = originalHost
+			SanitizeInboundForwardingHeaders(proxyRequest.Out.Header)
+			proxyRequest.Out.Header.Set("X-Forwarded-For", clientAddress.String())
+			proxyRequest.Out.Header.Set("X-Forwarded-Host", originalHost)
+			proxyRequest.Out.Header.Set("X-Forwarded-Proto", forwardedProto)
+		},
+		Transport: &failoverTransport{
+			base:        h.transport,
+			candidates:  candidates,
+			maxAttempts: maxBackendAttempts,
+		},
+		FlushInterval: -1,
+	}
 	proxy.ErrorHandler = func(rw http.ResponseWriter, request *http.Request, proxyErr error) {
 		slog.Warn("proxy failure", "route", match.Route.ID, "error", proxyErr.Error())
 		http.Error(rw, "upstream unavailable", http.StatusBadGateway)
@@ -287,7 +337,6 @@ func requestForBackend(req *http.Request, backend config.Backend) (*http.Request
 	clone.URL.Scheme = target.Scheme
 	clone.URL.Host = target.Host
 	clone.URL.Path = joinURLPath(target.Path, req.URL.Path)
-	clone.Host = target.Host
 	if target.RawQuery == "" || req.URL.RawQuery == "" {
 		clone.URL.RawQuery = target.RawQuery + req.URL.RawQuery
 	} else {
