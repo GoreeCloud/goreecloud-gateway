@@ -3,6 +3,7 @@ package tlsconfig
 import (
 	"context"
 	"crypto"
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
