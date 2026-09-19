@@ -1,0 +1,5 @@
+module github.com/GoreeCloud/goreecloud-gateway
+
+go 1.27.1
+
+require golang.org/x/crypto v0.57.0

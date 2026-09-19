@@ -1,0 +1,44 @@
+name: Gateway Isolated Sustained Load
+
+on:
+  push:
+    branches:
+      - main
+      - 'agent/**'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-sustained-load:
+    runs-on: ubuntu-latest
+    env:
+      GOREECLOUD_GATEWAY_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ env.GOREECLOUD_GATEWAY_SOURCE_REVISION }}
+      - name: Verify exact source
+        run: test "$(git rev-parse HEAD)" = "$GOREECLOUD_GATEWAY_SOURCE_REVISION"
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Build exact Gateway artifact
+        run: go build -trimpath -o /tmp/goreecloud-gateway ./cmd/gateway
+      - name: Run isolated sustained-load acceptance
+        run: |
+          python3 scripts/sustained_load_acceptance.py \
+            --binary /tmp/goreecloud-gateway \
+            --evidence /tmp/goreecloud-gateway-sustained-load-evidence.json
+          python3 -m json.tool /tmp/goreecloud-gateway-sustained-load-evidence.json >/dev/null
+      - name: Upload sanitized sustained-load evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: gateway-isolated-sustained-load-${{ env.GOREECLOUD_GATEWAY_SOURCE_REVISION }}
+          path: /tmp/goreecloud-gateway-sustained-load-evidence.json
+          if-no-files-found: error
+          retention-days: 30

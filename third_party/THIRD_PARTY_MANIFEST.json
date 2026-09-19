@@ -1,0 +1,46 @@
+{
+  "schema": "goreecloud-third-party-manifest/v1",
+  "reviewed_at": "2026-09-18",
+  "components": [
+    {
+      "name": "golang.org/x/crypto/acme",
+      "module": "golang.org/x/crypto",
+      "version": "v0.57.0",
+      "license": "BSD-3-Clause",
+      "integration_type": "native_go_module",
+      "modified": false,
+      "upstream": "https://go.googlesource.com/crypto",
+      "purpose": "RFC 8555 ACME protocol client primitives used behind GoreeCloud Gateway-owned certificate orchestration",
+      "scope": "Only package golang.org/x/crypto/acme is imported by Gateway source.",
+      "selection": "Current reviewed golang.org/x/crypto release at this stabilization point. Gateway now uses supported Go 1.27.1 rather than retaining the out-of-support Go 1.24 line solely for dependency compatibility.",
+      "known_advisories": [
+        {
+          "id": "GO-2026-5932",
+          "affected_packages": [
+            "golang.org/x/crypto/openpgp",
+            "golang.org/x/crypto/openpgp/packet",
+            "golang.org/x/crypto/openpgp/armor",
+            "golang.org/x/crypto/openpgp/clearsign",
+            "golang.org/x/crypto/openpgp/errors",
+            "golang.org/x/crypto/openpgp/elgamal",
+            "golang.org/x/crypto/openpgp/s2k"
+          ],
+          "applicability": "not_applicable_to_current_gateway_source",
+          "justification": "Gateway imports only golang.org/x/crypto/acme. Exact-head govulncheck reports zero vulnerabilities in imported packages and zero reachable vulnerabilities; the advisory remains module-visible because it applies to unused OpenPGP subpackages."
+        }
+      ]
+    },
+    {
+      "name": "golang.org/x/vuln/cmd/govulncheck",
+      "module": "golang.org/x/vuln",
+      "version": "v1.8.0",
+      "license": "BSD-3-Clause",
+      "integration_type": "pinned_ci_security_tool",
+      "modified": false,
+      "upstream": "https://go.googlesource.com/vuln",
+      "purpose": "Reachability-based Go vulnerability scanning for Gateway source and its dependency graph",
+      "scope": "CI-only tool installed at an exact version; not linked into Gateway runtime artifacts.",
+      "selection": "Current reviewed govulncheck release at this stabilization point, run with the exact supported Go version declared by Gateway."
+    }
+  ]
+}
