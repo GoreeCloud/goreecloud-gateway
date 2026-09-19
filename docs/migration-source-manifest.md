@@ -41,3 +41,10 @@ A mismatch, malformed input, invalid source revision, or cutover-authorizing sou
 A valid manifest does not prove that it was correctly derived from live Caddy state. The target-environment migration-preparation process must independently produce, review, retain, and govern the source configuration identity and its review evidence. Only then can the resulting parity evidence support a migration gate.
 
 This contract cannot authorize production cutover. Caddy remains production-authoritative until all remaining migration gates and explicit production approval pass.
+
+
+## Target-VPS read-only preflight
+
+`deploy/vps/caddy-read-only-preflight.sh` provides a bounded live-state discovery step before a migration-source manifest is created. It reports Caddy container/config identity, safe route/upstream/TLS structure, listeners, relevant firewall matches, Docker-network membership, and public certificate metadata without printing raw Caddy configuration, Docker environment values, provider credentials, or private-key material.
+
+The preflight report is **not** a migration-source manifest and is **not** parity evidence. Its purpose is to identify and retain the live inputs that must then be independently reviewed through the approved migration-preparation process. See `docs/vps-caddy-read-only-preflight.md`.

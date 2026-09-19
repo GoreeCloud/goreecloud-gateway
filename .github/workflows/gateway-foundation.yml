@@ -35,6 +35,10 @@ jobs:
           python -m json.tool config/example.json >/dev/null
       - name: Validate Gateway Milestone 0 contract
         run: python3 scripts/validate_gateway_foundation.py
+      - name: Validate Caddy VPS read-only preflight
+        run: |
+          bash -n deploy/vps/caddy-read-only-preflight.sh
+          bash deploy/vps/caddy-read-only-preflight.sh --self-test
 
   proxy-core:
     runs-on: ubuntu-latest
