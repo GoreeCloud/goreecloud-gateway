@@ -269,3 +269,192 @@ func writePrivateFile(t *testing.T, name string, data []byte) string {
 	}
 	return path
 }
+
+func TestRunRolloverPrepareReturnsPrivacySafeReceipt(t *testing.T) {
+	stateRoot, wrappingFile := makeAccountState(t, "https://ca.example/directory")
+	deps := dependencies{
+		now: func() time.Time { return time.Date(2026, 9, 18, 19, 0, 0, 0, time.UTC) },
+		prepareRollover: tlsconfig.PrepareACMEAccountKeyRollover,
+	}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{
+		"-action", "rollover-prepare",
+		"-directory", "https://ca.example/directory",
+		"-state-root", stateRoot,
+		"-wrapping-key-file", wrappingFile,
+	}, &stdout, &stderr, deps)
+	if code != 0 {
+		t.Fatalf("run code=%d stderr=%q", code, stderr.String())
+	}
+	if strings.Contains(stdout.String(), "ciphertext_base64") || strings.Contains(stdout.String(), "nonce_base64") || strings.Contains(stdout.String(), "PRIVATE KEY") {
+		t.Fatalf("rollover preparation output exposed protected key material: %s", stdout.String())
+	}
+	var receipt accountKeyRolloverPrepareReceipt
+	if err := json.Unmarshal(stdout.Bytes(), &receipt); err != nil {
+		t.Fatal(err)
+	}
+	if receipt.OldAccountPublicKeySHA256 == "" || receipt.NewAccountPublicKeySHA256 == "" || receipt.BundleFile == "" || receipt.ProductionCutoverAuthorized {
+		t.Fatalf("unexpected rollover preparation receipt: %+v", receipt)
+	}
+	if _, err := os.Stat(receipt.BundleFile); err != nil {
+		t.Fatalf("prepared rollover bundle missing: %v", err)
+	}
+}
+
+func TestRunRolloverExecuteRequiresExactFingerprintConfirmationBeforeMutation(t *testing.T) {
+	stateRoot, wrappingFile := makeAccountState(t, "https://ca.example/directory")
+	wrapping, err := tlsconfig.LoadACMEAccountWrappingKey(wrappingFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clear(wrapping)
+	bundlePath, bundle, err := tlsconfig.PrepareACMEAccountKeyRollover(stateRoot, wrapping, "https://ca.example/directory", time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	deps := dependencies{
+		now: func() time.Time { return time.Now().UTC() },
+		executeRollover: func(context.Context, string, string, []byte, string, *http.Client, time.Time) (tlsconfig.ACMEAccountKeyRolloverReceipt, error) {
+			calls++
+			return tlsconfig.ACMEAccountKeyRolloverReceipt{}, nil
+		},
+	}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{
+		"-action", "rollover-execute",
+		"-directory", "https://ca.example/directory",
+		"-state-root", stateRoot,
+		"-wrapping-key-file", wrappingFile,
+		"-rollover-bundle-file", bundlePath,
+		"-confirm-rollover-directory", "https://ca.example/directory",
+		"-confirm-old-account-sha256", bundle.OldAccountPublicKeySHA256,
+		"-confirm-new-account-sha256", strings.Repeat("f", 64),
+	}, &stdout, &stderr, deps)
+	if code != 2 {
+		t.Fatalf("run code=%d stderr=%q", code, stderr.String())
+	}
+	if calls != 0 {
+		t.Fatalf("rollover mutation dependency called despite fingerprint mismatch: %d", calls)
+	}
+}
+
+func TestRunRolloverProbeIsReadOnlyOperatorAction(t *testing.T) {
+	stateRoot, wrappingFile := makeAccountState(t, "https://ca.example/directory")
+	wrapping, err := tlsconfig.LoadACMEAccountWrappingKey(wrappingFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clear(wrapping)
+	bundlePath, _, err := tlsconfig.PrepareACMEAccountKeyRollover(stateRoot, wrapping, "https://ca.example/directory", time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	deps := dependencies{
+		now: func() time.Time { return time.Date(2026, 9, 18, 19, 5, 0, 0, time.UTC) },
+		probeRollover: func(context.Context, string, string, []byte, string, *http.Client, time.Time) (tlsconfig.ACMEAccountRolloverProbeReport, error) {
+			calls++
+			return tlsconfig.ACMEAccountRolloverProbeReport{
+				Schema:                      tlsconfig.ACMEAccountRolloverProbeSchemaV1,
+				DirectoryURL:                "https://ca.example/directory",
+				Outcome:                     tlsconfig.ACMERolloverAuthorityOld,
+				OldKeyProbe:                 tlsconfig.ACMEAccountProbeRecognized,
+				NewKeyProbe:                 tlsconfig.ACMEAccountProbeNotRecognized,
+				ProductionCutoverAuthorized: false,
+			}, nil
+		},
+	}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{
+		"-action", "rollover-probe",
+		"-directory", "https://ca.example/directory",
+		"-state-root", stateRoot,
+		"-wrapping-key-file", wrappingFile,
+		"-rollover-bundle-file", bundlePath,
+	}, &stdout, &stderr, deps)
+	if code != 0 || calls != 1 {
+		t.Fatalf("run code=%d calls=%d stderr=%q", code, calls, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), tlsconfig.ACMERolloverAuthorityOld) {
+		t.Fatalf("probe output=%q", stdout.String())
+	}
+}
+
+func TestRunRolloverRecoverRequiresExpectedOutcomeAndIdentityConfirmation(t *testing.T) {
+	stateRoot, wrappingFile := makeAccountState(t, "https://ca.example/directory")
+	wrapping, err := tlsconfig.LoadACMEAccountWrappingKey(wrappingFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clear(wrapping)
+	bundlePath, bundle, err := tlsconfig.PrepareACMEAccountKeyRollover(stateRoot, wrapping, "https://ca.example/directory", time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	deps := dependencies{
+		now: func() time.Time { return time.Date(2026, 9, 18, 19, 10, 0, 0, time.UTC) },
+		recoverRollover: func(_ context.Context, _, _ string, _ []byte, _ string, _ *http.Client, expected string, _ time.Time) (tlsconfig.ACMEAccountRolloverProbeReport, tlsconfig.ACMEAccountRolloverRecoveryReceipt, error) {
+			calls++
+			if expected != tlsconfig.ACMERolloverAuthorityOld {
+				t.Fatalf("expected outcome=%q", expected)
+			}
+			return tlsconfig.ACMEAccountRolloverProbeReport{
+					Schema: tlsconfig.ACMEAccountRolloverProbeSchemaV1,
+					Outcome: tlsconfig.ACMERolloverAuthorityOld,
+				},
+				tlsconfig.ACMEAccountRolloverRecoveryReceipt{
+					Schema:                      tlsconfig.ACMEAccountRolloverRecoveryReceiptSchemaV1,
+					ObservedOutcome:             tlsconfig.ACMERolloverAuthorityOld,
+					Action:                      tlsconfig.ACMERolloverRecoveryRetainOld,
+					ProductionCutoverAuthorized: false,
+				},
+				nil
+		},
+	}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{
+		"-action", "rollover-recover",
+		"-directory", "https://ca.example/directory",
+		"-state-root", stateRoot,
+		"-wrapping-key-file", wrappingFile,
+		"-rollover-bundle-file", bundlePath,
+		"-confirm-rollover-directory", "https://ca.example/directory",
+		"-confirm-old-account-sha256", bundle.OldAccountPublicKeySHA256,
+		"-confirm-new-account-sha256", bundle.NewAccountPublicKeySHA256,
+		"-expected-rollover-outcome", tlsconfig.ACMERolloverAuthorityOld,
+	}, &stdout, &stderr, deps)
+	if code != 0 || calls != 1 {
+		t.Fatalf("run code=%d calls=%d stderr=%q", code, calls, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), tlsconfig.ACMERolloverRecoveryRetainOld) {
+		t.Fatalf("recovery output=%q", stdout.String())
+	}
+}
+
+func TestRunRolloverRecoverRejectsAmbiguousExpectedOutcomeBeforeMutation(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{
+		"-action", "rollover-recover",
+		"-directory", "https://ca.example/directory",
+		"-state-root", "/does/not/exist",
+		"-wrapping-key-file", "/does/not/exist",
+		"-rollover-bundle-file", "/does/not/exist",
+		"-confirm-rollover-directory", "https://ca.example/directory",
+		"-confirm-old-account-sha256", strings.Repeat("a", 64),
+		"-confirm-new-account-sha256", strings.Repeat("b", 64),
+		"-expected-rollover-outcome", tlsconfig.ACMERolloverAuthorityBoth,
+	}, &stdout, &stderr, dependencies{now: time.Now, recoverRollover: func(context.Context, string, string, []byte, string, *http.Client, string, time.Time) (tlsconfig.ACMEAccountRolloverProbeReport, tlsconfig.ACMEAccountRolloverRecoveryReceipt, error) {
+		t.Fatal("ambiguous recovery unexpectedly reached mutation dependency")
+		return tlsconfig.ACMEAccountRolloverProbeReport{}, tlsconfig.ACMEAccountRolloverRecoveryReceipt{}, nil
+	}})
+	if code != 2 || !strings.Contains(stderr.String(), "old-authoritative or new-authoritative") {
+		t.Fatalf("run code=%d stderr=%q", code, stderr.String())
+	}
+}

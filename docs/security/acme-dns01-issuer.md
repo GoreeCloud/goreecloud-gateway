@@ -139,4 +139,17 @@ Recovery always performs a fresh old/new-key probe immediately before local stat
 
 `both-recognized`, `neither-recognized`, and `inconclusive` are hard stops and never mutate local state. A mismatch between the fresh probe result and the operator's explicit expected outcome is also a hard stop.
 
-Recovery receipts contain only directory/fingerprint/action/basename evidence and cannot authorize production cutover. Operator CLI wiring, live CA rehearsal, target secret provisioning, and target recovery rehearsal remain required before this path can be accepted for production use.
+Recovery receipts contain only directory/fingerprint/action/basename evidence and cannot authorize production cutover.
+
+## Rollover operator wiring
+
+The Development `gateway-acme-account` tool now exposes four separate rollover actions:
+
+- `rollover-prepare`: local-only generation and encrypted persistence of the replacement-key bundle;
+- `rollover-execute`: the CA-mutating RFC 8555 key-change action, gated by an exact directory confirmation plus exact old/new account public-key SHA-256 confirmations loaded from the prepared bundle;
+- `rollover-probe`: read-only old/new-key existing-account recognition with no mutation-confirmation inputs accepted; and
+- `rollover-recover`: local recovery after a fresh read-only probe, gated by the exact directory, exact old/new account fingerprints, and an explicit expected outcome of only `old-authoritative` or `new-authoritative`.
+
+Preparation output intentionally omits nonce/ciphertext/private-key fields. Probe and recovery output use the existing privacy-safe report/receipt structures. Neither operator wiring nor green CI authorizes live account registration, live key rollover, production certificate issuance, listener transfer, or Caddy retirement.
+
+Live CA rehearsal, target secret provisioning, and target recovery rehearsal remain required before this path can be accepted for production use.
