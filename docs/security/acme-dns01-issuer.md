@@ -38,9 +38,9 @@ The issuer:
 
 ## Account-state boundary
 
-ACME account registration, terms-of-service review/acceptance, account-key generation, protected account-key persistence, rollover, recovery, and revocation remain separate work. The renewal issuer intentionally fails if its supplied account key is not already registered and valid.
+The Development source now contains bounded account-key generation, encrypted persistence, explicit registration/TOS controls, rollover preparation/execution, read-only rollover authority probing, and explicit local recovery execution. These capabilities remain Development-only until target-environment operator rehearsal and acceptance are complete. The renewal issuer intentionally fails if its supplied account key is not already registered and valid.
 
-No ACME account key is committed to this repository.
+Live account registration, live key rollover/recovery, approved secret provisioning/escrow, target restore rehearsal, revocation handling, and production acceptance remain separate gates. No ACME account key or wrapping key is committed to this repository.
 
 ## DNS propagation boundary
 

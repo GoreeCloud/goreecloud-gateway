@@ -21,9 +21,10 @@ import (
 )
 
 const (
-	accountKeyCreateReceiptSchemaV1 = "goreecloud-gateway-acme-account-key-create-receipt/v1"
-	maxOperatorJSONBytes             = 64 << 10
-	maxEABKeyFileBytes               = 8 << 10
+	accountKeyCreateReceiptSchemaV1          = "goreecloud-gateway-acme-account-key-create-receipt/v1"
+	accountKeyRolloverPrepareReceiptSchemaV1 = "goreecloud-gateway-acme-account-key-rollover-prepare-receipt/v1"
+	maxOperatorJSONBytes                      = 64 << 10
+	maxEABKeyFileBytes                        = 8 << 10
 )
 
 type accountKeyCreateReceipt struct {
@@ -260,7 +261,7 @@ func run(args []string, stdout, stderr io.Writer, deps dependencies) int {
 			return 1
 		}
 		return encodeJSON(stdout, stderr, accountKeyRolloverPrepareReceipt{
-			Schema:                      tlsconfig.ACMEAccountRolloverBundleSchemaV1,
+			Schema:                      accountKeyRolloverPrepareReceiptSchemaV1,
 			DirectoryURL:                bundle.DirectoryURL,
 			PreparedAt:                  bundle.PreparedAt,
 			OldAccountPublicKeySHA256:   bundle.OldAccountPublicKeySHA256,
