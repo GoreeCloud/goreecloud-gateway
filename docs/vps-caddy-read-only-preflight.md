@@ -28,18 +28,18 @@ The report includes:
 - Caddy container image identity, state, restart policy, Compose project/service labels, config path, adapter, and config SHA-256;
 - mount identities and Compose file paths plus hashes, never file contents;
 - published Docker ports;
-- Caddy Docker network names and Caddy addresses;
+- Caddy Docker network names, Caddy addresses, and member container names for each attached network;
 - sanitized Caddy structure derived in memory:
   - HTTP server/listener counts;
-  - route host matchers;
-  - reverse-proxy upstream dial targets;
-  - handler module names;
+  - per-route safe match records for host, path, method, and protocol;
+  - per-route handler module names and reverse-proxy upstream dial targets;
+  - aggregate route host matchers, upstream dials, and handler module names;
   - TLS automation subjects;
   - issuer module names; and
   - DNS provider module name only;
 - host TCP 80/443 and UDP 443 listeners;
 - read-only firewall rules matching ports 80/443 when current privileges permit; and
-- certificate metadata from Caddy's mounted data directory: relative certificate file identity, SHA-256, subject, issuer, serial, validity dates, fingerprint, and SAN extension.
+- certificate metadata from Caddy's mounted data directory: relative certificate file identity, SHA-256, subject, issuer, serial, validity dates, fingerprint, and SAN extension, using bounded read-only privilege when required.
 
 Private-key files are never read. Raw Caddy configuration, Docker environment variables, API tokens, provider secrets, private keys, and full firewall configuration are never printed.
 

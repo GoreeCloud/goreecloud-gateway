@@ -6,6 +6,18 @@ mutation_permitted="no"
 secret_values_printed="no"
 live_provider_query_performed="no"
 
+run_privileged_read() {
+  if [[ "$(id -u)" -eq 0 ]]; then
+    "$@"
+    return $?
+  fi
+  if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+    sudo -n "$@"
+    return $?
+  fi
+  return 126
+}
+
 sanitize_caddy_json() {
   python3 -c '
 import json
@@ -25,40 +37,87 @@ servers = http.get("servers", {}) if isinstance(http, dict) else {}
 if not isinstance(servers, dict):
     servers = {}
 
+route_rows = []
 hosts = set()
 upstreams = set()
 handlers = set()
 
-def walk(obj):
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            if key == "host" and isinstance(value, list):
-                for item in value:
-                    if isinstance(item, str):
-                        hosts.add(item)
-            elif key == "dial" and isinstance(value, str):
-                upstreams.add(value)
-            elif key == "handler" and isinstance(value, str):
-                handlers.add(value)
-            walk(value)
-    elif isinstance(obj, list):
-        for item in obj:
-            walk(item)
+def as_values(value):
+    if isinstance(value, list):
+        return [str(x) for x in value if isinstance(x, (str, int, float))]
+    if isinstance(value, (str, int, float)):
+        return [str(value)]
+    return []
 
-walk(data)
+def merge_match(route, inherited):
+    result = {key: set(values) for key, values in inherited.items()}
+    for matcher in route.get("match", []) if isinstance(route, dict) else []:
+        if not isinstance(matcher, dict):
+            continue
+        for key in ("host", "path", "method", "protocol"):
+            for value in as_values(matcher.get(key)):
+                result.setdefault(key, set()).add(value)
+    return result
+
+def record(server_name, match, handler, dials):
+    row = {
+        "server": server_name,
+        "hosts": sorted(match.get("host", set())),
+        "paths": sorted(match.get("path", set())),
+        "methods": sorted(match.get("method", set())),
+        "protocols": sorted(match.get("protocol", set())),
+        "handler": handler,
+        "upstreams": sorted(set(dials)),
+    }
+    route_rows.append(row)
+    hosts.update(row["hosts"])
+    upstreams.update(row["upstreams"])
+    handlers.add(handler)
+
+def walk_routes(server_name, routes, inherited=None):
+    inherited = inherited or {}
+    for route in routes if isinstance(routes, list) else []:
+        if not isinstance(route, dict):
+            continue
+        match = merge_match(route, inherited)
+        for handle in route.get("handle", []):
+            if not isinstance(handle, dict):
+                continue
+            handler = handle.get("handler")
+            if not isinstance(handler, str):
+                continue
+            if handler == "subroute":
+                walk_routes(server_name, handle.get("routes", []), match)
+                continue
+            dials = []
+            if handler == "reverse_proxy":
+                for upstream in handle.get("upstreams", []):
+                    if isinstance(upstream, dict) and isinstance(upstream.get("dial"), str):
+                        dials.append(upstream["dial"])
+            record(server_name, match, handler, dials)
 
 print(f"http_server_count={len(servers)}")
 for name in sorted(servers):
     server = servers[name]
     print(f"http_server={name}")
-    if isinstance(server, dict):
-        listeners = server.get("listen", [])
-        if isinstance(listeners, list):
-            for listener in sorted(x for x in listeners if isinstance(x, str)):
-                print(f"http_listen={listener}")
-        routes = server.get("routes", [])
-        if isinstance(routes, list):
-            print(f"http_server_route_count={len(routes)}")
+    if not isinstance(server, dict):
+        continue
+    listeners = server.get("listen", [])
+    if isinstance(listeners, list):
+        for listener in sorted(x for x in listeners if isinstance(x, str)):
+            print(f"http_listen={listener}")
+    walk_routes(name, server.get("routes", []), {})
+
+print(f"sanitized_route_record_count={len(route_rows)}")
+for index, row in enumerate(route_rows, 1):
+    prefix = f"route_record[{index:03d}]"
+    print(prefix + ".server=" + row["server"])
+    print(prefix + ".hosts=" + ";".join(row["hosts"]))
+    print(prefix + ".paths=" + ";".join(row["paths"]))
+    print(prefix + ".methods=" + ";".join(row["methods"]))
+    print(prefix + ".protocols=" + ";".join(row["protocols"]))
+    print(prefix + ".handler=" + row["handler"])
+    print(prefix + ".upstreams=" + ";".join(row["upstreams"]))
 
 for host in sorted(hosts):
     print(f"route_host={host}")
@@ -105,6 +164,9 @@ self_test() {
   grep -qx 'adapted_config_status=parsed' <<<"$output"
   grep -qx 'route_host=example.goreecloud.test' <<<"$output"
   grep -qx 'upstream_dial=backend:8080' <<<"$output"
+  grep -qx 'route_record[001].hosts=example.goreecloud.test' <<<"$output"
+  grep -qx 'route_record[001].handler=reverse_proxy' <<<"$output"
+  grep -qx 'route_record[001].upstreams=backend:8080' <<<"$output"
   grep -qx 'tls_dns_provider=porkbun' <<<"$output"
   if grep -q 'SELF_TEST_SECRET' <<<"$output"; then
     echo "self_test=failed-secret-leak"
@@ -205,7 +267,7 @@ if [[ -n "$compose_files" ]]; then
     [[ -n "$file" ]] || continue
     echo "compose_file=$file"
     if [[ -f "$file" ]]; then
-      echo "compose_file_sha256=$(sha256sum "$file" 2>/dev/null | awk '{print $1}')"
+      echo "compose_file_sha256=$(run_privileged_read sha256sum "$file" 2>/dev/null | awk '{print $1}')"
     else
       echo "compose_file_sha256=unavailable"
     fi
@@ -224,6 +286,11 @@ docker inspect --format '{{range $name, $network := .NetworkSettings.Networks}}{
   while IFS=$'\t' read -r name ipv4 ipv6; do
     [[ -n "$name" ]] || continue
     echo "network=$name caddy_ipv4=$ipv4 caddy_ipv6=$ipv6"
+    docker network inspect --format '{{range .Containers}}{{println .Name}}{{end}}' "$name" 2>/dev/null |
+      LC_ALL=C sort -u |
+      while IFS= read -r member; do
+        [[ -n "$member" ]] && echo "network_member=$name|$member"
+      done
   done
 echo
 
@@ -243,18 +310,6 @@ else
   echo "listeners_status=ss-unavailable"
 fi
 echo
-
-run_privileged_read() {
-  if [[ "$(id -u)" -eq 0 ]]; then
-    "$@"
-    return $?
-  fi
-  if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
-    sudo -n "$@"
-    return $?
-  fi
-  return 126
-}
 
 echo "=== Firewall 80/443 Matches ==="
 firewall_seen="no"
@@ -291,17 +346,17 @@ elif ! command -v openssl >/dev/null 2>&1; then
   echo "certificate_store_status=openssl-unavailable"
 else
   cert_root="$data_source/caddy/certificates"
-  cert_count="$(find "$cert_root" -type f -name '*.crt' -print 2>/dev/null | wc -l | tr -d ' ')"
+  cert_count="$(run_privileged_read find "$cert_root" -type f -name '*.crt' -print 2>/dev/null | wc -l | tr -d ' ')"
   echo "certificate_count=$cert_count"
   while IFS= read -r -d '' cert; do
     relative="${cert#"$cert_root"/}"
     echo "certificate_file=$relative"
-    echo "certificate_sha256=$(sha256sum "$cert" 2>/dev/null | awk '{print $1}')"
-    openssl x509 -in "$cert" -noout -subject -issuer -serial -dates -fingerprint -sha256 2>/dev/null |
+    echo "certificate_sha256=$(run_privileged_read sha256sum "$cert" 2>/dev/null | awk '{print $1}')"
+    run_privileged_read openssl x509 -in "$cert" -noout -subject -issuer -serial -dates -fingerprint -sha256 2>/dev/null |
       sed -e 's/^/certificate_/'
-    san="$(openssl x509 -in "$cert" -noout -ext subjectAltName 2>/dev/null | tail -n +2 | tr '\n' ' ' | sed -e 's/[[:space:]][[:space:]]*/ /g' -e 's/^ //' -e 's/ $//')"
+    san="$(run_privileged_read openssl x509 -in "$cert" -noout -ext subjectAltName 2>/dev/null | tail -n +2 | tr '\n' ' ' | sed -e 's/[[:space:]][[:space:]]*/ /g' -e 's/^ //' -e 's/ $//')"
     [[ -n "$san" ]] && echo "certificate_san=$san"
-  done < <(find "$cert_root" -type f -name '*.crt' -print0 2>/dev/null | sort -z)
+  done < <(run_privileged_read find "$cert_root" -type f -name '*.crt' -print0 2>/dev/null | sort -z)
 fi
 echo
 
