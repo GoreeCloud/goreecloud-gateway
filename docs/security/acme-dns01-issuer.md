@@ -87,7 +87,7 @@ Before any CA-side key-change operation can be implemented, Gateway can:
 - reject symlink paths, broad permissions, malformed metadata, wrong wrapping keys, and bundles copied outside the state root; and
 - fail closed if the active account-key fingerprint changes after preparation.
 
-This means a future CA key-change transaction can require recoverable replacement-key state to exist before it sends the RFC 8555 rollover request. The current slice does **not** send a key-change request, activate the replacement envelope, remove the old envelope, or claim rollback has been tested. Those steps remain blocked until a transaction model proves that a CA-success/local-persistence failure cannot strand the account.
+The preparation action itself is non-networking and cannot send a key-change request. The separate transactional execution boundary consumes this prewritten state before any RFC 8555 key-change attempt. Live CA execution and target-environment recovery rehearsal remain blocked until explicitly approved and verified.
 
 
 ## Transactional account-key rollover execution
@@ -101,12 +101,12 @@ For a prepared rollover bundle, Gateway now:
 3. builds and durably stages a complete replacement active envelope in the same protected state directory;
 4. refuses to call the CA if unresolved pending activation state already exists;
 5. sends the RFC 8555 account-key rollover only after both recovery artifacts exist;
-6. removes the staged replacement and leaves the old active envelope unchanged when the CA rejects the rollover; and
-7. after CA success, atomically renames the staged replacement over the active envelope and synchronizes the state directory.
+6. treats every returned CA error as an uncertain distributed outcome, leaves the old local active envelope unchanged, retains the complete staged replacement, and forbids blind replay until read-only recovery probing establishes authority; and
+7. after confirmed CA success, atomically renames the staged replacement over the active envelope and synchronizes the state directory.
 
 The prepared rollover bundle and retired encrypted envelope are intentionally retained after success. The returned receipt contains fingerprints and basenames only and cannot authorize production cutover.
 
-A returned ACME error and a remote-success/local-activation failure are both treated as distributed-transaction uncertainty cases. The replacement private key remains recoverable from the prepared bundle and the fully formed pending active envelope remains on disk if the final rename fails, but an approved operator recovery/probing workflow is still required before live use so Gateway can distinguish CA-success from CA-failure after process loss without blindly replaying the key-change request.
+A returned ACME error and a remote-success/local-activation failure are both treated as distributed-transaction uncertainty cases. The replacement private key remains recoverable from the prepared bundle and the fully formed pending active envelope remains on disk if final activation does not complete. The Development operator surface now provides read-only probing and explicitly confirmed recovery; live target rehearsal is still required before production use.
 
 
 ## Read-only rollover authority probe
@@ -125,7 +125,7 @@ The privacy-safe report contains only the CA directory, probe time, old/new publ
 - `neither-recognized`: neither key is recognized and operator review remains required; or
 - `inconclusive`: a transport/protocol/response failure prevents a trustworthy classification.
 
-Transport or protocol failures are never converted into an authority guess. The probe does not activate a pending envelope, remove a retired envelope, delete a prepared bundle, retry rollover, or authorize production cutover. Recovery activation policy and operator wiring remain separate gates.
+Transport or protocol failures are never converted into an authority guess. The probe does not activate a pending envelope, remove a retired envelope, delete a prepared bundle, retry rollover, or authorize production cutover. The recovery executor and operator wiring are separate explicit actions and remain subject to target-environment rehearsal and approval.
 
 
 ## Local rollover recovery execution
