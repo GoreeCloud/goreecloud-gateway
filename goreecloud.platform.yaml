@@ -53,7 +53,7 @@ platform_systems:
     evidence:
       - README.md
       - SPECIFICATIONS.md
-    notes: The Gateway administration console is applicable and current Stable Glaze UI 1.5.1 is required, but no accepted Glaze UI administration application exists for this candidate.
+    notes: The Gateway administration console is applicable and current Stable Glaze UI 1.6.0 is required. Live Glaze lifecycle authority records accepted release source a7180679ea851389e0f3004515f9a25f420e716d, but no accepted Glaze UI administration application exists for this Gateway candidate.
   mesh:
     result: applicable-blocked
     version: null
@@ -115,10 +115,10 @@ external_dependencies: []
 
 compatibility:
   platform_contract: "0.4"
-  glaze_ui_required: "1.5.1"
+  glaze_ui_required: "1.6.0"
   requires:
     - goreecloud-platform-contract==0.4
-    - glaze-ui==1.5.1
+    - glaze-ui==1.6.0
   provides: []
 
 evidence:
@@ -139,7 +139,7 @@ conformance:
     - Privacy Shield integration and acceptance are incomplete.
     - Wardveil Security integration and target-environment security acceptance are incomplete.
     - Everkeep integration and production-representative backup, restore, recovery, and rollback acceptance are incomplete.
-    - Current Stable Glaze UI 1.5.1 administration implementation and acceptance are incomplete.
+    - Current Stable Glaze UI 1.6.0 administration implementation and application acceptance are incomplete.
     - GoreeCloud Mesh integration and acceptance are incomplete.
     - GoreeCloud Identity integration and acceptance are incomplete.
     - GoreeCloud Policy decision, enforcement, and evidence acceptance are incomplete.
