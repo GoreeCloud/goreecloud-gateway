@@ -13,9 +13,9 @@ This file records capabilities that are implemented in accepted `main` or in a s
 - Explicit Caddy-authoritative migration boundary: Gateway does not own production TCP 80/443 publication merely because source exists.
 - Repository governance, product specifications, feature summary, benefits, competitive objectives, and branding records.
 
-## PR #9 Development source foundation
+## Integrated Development source foundation
 
-The active PR #9 candidate implements, at Development source/test level:
+Accepted `main` implements the PR #9 foundation at Development source/test level:
 
 - first-party Go Gateway runtime and control-plane foundations;
 - deterministic route and backend selection;
@@ -32,11 +32,11 @@ The active PR #9 candidate implements, at Development source/test level:
 - operator CLI wiring for account registration, rollover, probe, and recovery with explicit confirmations;
 - source-level integration/evidence contracts for the nine Integral Platform Systems without representing those contracts as target-runtime acceptance.
 
-Final exact-head validation for PR #9 is authoritative in GitHub pull-request/workflow evidence and must be rerun after any candidate-head change.
+PR #9 exact-head validation, merge evidence, and merged-main workflow results are authoritative in GitHub. Repository records must not duplicate moving candidate SHAs as long-lived feature authority.
 
 ## Explicitly not established
 
-The Development candidate does **not** establish:
+The integrated Development source does **not** establish:
 
 - live target-VPS Caddy route/listener/TLS/firewall/Docker parity;
 - production ACME/DNS credentials or live CA/Porkbun issuance/renewal acceptance;
