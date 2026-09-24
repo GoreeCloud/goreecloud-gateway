@@ -15,7 +15,14 @@ REQUIRED_RECORDS = {
     "BENEFITS.md": "# GoreeCloud Gateway Benefits",
     "COMPETITIVE-OBJECTIVES.md": "# GoreeCloud Gateway Competitive Objectives",
     "BRANDING.md": "# GoreeCloud Gateway Branding",
+    "IMPLEMENTED-FEATURES.md": "# GoreeCloud Gateway Implemented Features",
+    "PLANNED-FEATURES.md": "# GoreeCloud Gateway Planned Features",
+    "CHANGELOGS.md": "# GoreeCloud Gateway Changelogs",
 }
+
+RETIRED_RECORDS = (
+    "FEATURE-ROADMAP.md",
+)
 
 LICENSE_MARKERS = (
     "GNU AFFERO GENERAL PUBLIC LICENSE",
@@ -48,6 +55,11 @@ def main() -> int:
         if len(text.strip()) < len(heading) + 80:
             errors.append(f"governance record is unexpectedly skeletal: {relative}")
 
+    for relative in RETIRED_RECORDS:
+        path = ROOT / relative
+        if path.exists() or path.is_symlink():
+            errors.append(f"retired repository control must not exist: {relative}")
+
     license_text = read_required("LICENSE", errors)
     if license_text is not None:
         for marker in LICENSE_MARKERS:
@@ -61,8 +73,9 @@ def main() -> int:
         return 1
 
     print(
-        "GoreeCloud Gateway repository governance validation passed: all six mandatory root records "
-        "and explicit AGPL-3.0 license material are present and structurally valid."
+        "GoreeCloud Gateway repository governance validation passed: all nine mandatory root records, "
+        "Git-native feature/change authorities, retirement guards, and explicit AGPL-3.0 license material "
+        "are structurally valid."
     )
     return 0
 
