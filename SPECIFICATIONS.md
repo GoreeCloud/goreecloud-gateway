@@ -4,7 +4,7 @@
 
 GoreeCloud Gateway is in **Active Development**. The authoritative project specification is `GoreeCloud/Projects/Project Specification — Gateway`; this repository record is the code-adjacent governance and implementation companion.
 
-Accepted `main` currently contains product identity, AGPL-3.0 license material, and repository governance only. The native runtime remains in separately governed development pull requests. Caddy remains production-authoritative.
+Accepted `main` now contains product identity, AGPL-3.0 license material, repository governance, and the integrated PR #9 native Gateway Development runtime/control-plane foundation. Caddy remains production-authoritative; source integration does not transfer production listeners or publication authority.
 
 ## 2. Purpose
 
@@ -120,7 +120,7 @@ The product must preserve sufficient configuration history and known-good state 
 
 ## 13. Current source-evidence boundary
 
-Native implementation work exists in draft development pull requests and includes increasingly strong source, isolated runtime, sustained-load, migration-evidence, configuration-parity, and Infrastructure Status/publication-preflight contracts. Those pull requests remain separately governed and are not merged into accepted `main` by this repository-governance work.
+The PR #9 native implementation foundation is integrated into accepted `main` as Development source and includes source, isolated-runtime, sustained-load, migration-evidence, configuration-parity, recovery, certificate/ACME, and Infrastructure Status/publication-preflight contracts. Future increments remain separately governed through their own pull requests and acceptance gates.
 
 Repository documentation must always distinguish accepted main, validated development candidate, migration-rehearsal evidence, production migration acceptance, and final Stable qualification.
 
