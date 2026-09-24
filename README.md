@@ -6,11 +6,11 @@ GoreeCloud Gateway is the planned first-party GoreeCloud reverse proxy, HTTPS ga
 
 ## Current accepted-main boundary
 
-The accepted `main` branch is currently a governance, licensing, and branding foundation. It does **not** own production HTTP/HTTPS listener authority and does not contain the full native Gateway runtime.
+The accepted `main` branch now contains the integrated Development Gateway runtime/control-plane foundation together with repository governance, licensing, and branding. It does **not** own production HTTP/HTTPS listener authority.
 
 Caddy remains production-authoritative for GoreeCloud web publication until Gateway completes migration-source parity, production-representative runtime, recovery/rollback, platform-integration, listener-transfer, and explicit production-acceptance gates.
 
-Executable development remains isolated in separate draft pull requests, including the native foundation and Infrastructure Status/publication-preflight work. Their source/CI evidence must not be represented as accepted `main` behavior before their own review and merge gates are satisfied.
+PR #9 integrated the validated native foundation, Infrastructure Status/publication-preflight work, recovery/migration evidence, and certificate/ACME Development source into `main`. That source integration remains Development evidence only and must not be represented as target-VPS parity, deployment, production acceptance, or Stable behavior.
 
 ## Product role
 
