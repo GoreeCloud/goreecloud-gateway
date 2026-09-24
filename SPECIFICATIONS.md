@@ -62,7 +62,7 @@ Private operation is the default. Discovery alone must not create an active publ
 
 The product direction includes HTTP/1.1 and HTTP/2 reverse proxying, WebSocket/streaming support, timeouts, health checks, connection/backpressure controls, load balancing, redirects/header transforms, graceful configuration reloads, and optional later HTTP/3 only after separate acceptance.
 
-Automatic HTTPS must include safe ACME lifecycle management, DNS-01, permitted HTTP-01/TLS-ALPN-01 paths, wildcard workflows, certificate inventory/expiry/renewal/failure state, protected certificate storage, and safe failure behavior. A certificate failure must not silently downgrade a service to unencrypted publication.
+Automatic HTTPS must include safe ACME lifecycle management, DNS-01, permitted HTTP-01/TLS-ALPN-01 paths, wildcard workflows, certificate inventory/expiry/renewal/failure state, protected certificate storage, and safe failure behavior. The Development candidate now includes a provider-neutral DNS-01 boundary; a bounded Porkbun TXT-record adapter that can create only challenge records inside its configured zone and remove only the exact record ID it created; and an RFC 8555 order-based renewal issuer that requires an already registered ACME account, accepts only DNS-01 pending authorizations, waits for exact TXT propagation, cleans up the exact challenge record, generates a fresh certificate key and CSR, finalizes the order, and hands the returned material to the independent renewal validation/staging boundary. Separate Development source also provides explicit two-phase ACME account registration, encrypted account-key storage, transactional account-key rollover preparation/execution, read-only authority probing, and explicit recovery controls. These source/test capabilities do not establish live CA/Porkbun issuance, protected production key provisioning, target-VPS certificate parity, production renewal acceptance, or cutover authority. A certificate failure must not silently downgrade a service to unencrypted publication.
 
 ## 8. Discovery
 
@@ -92,17 +92,19 @@ Source validation and isolated runtime tests may grant migration-rehearsal eligi
 
 ## 10. GoreeCloud platform requirements
 
-Stable qualification requires substantive accepted integration with:
+Stable qualification requires substantive accepted evaluation and integration with all nine Integral Platform Systems:
 
-- **Glaze UI** — administrative presentation, interaction, accessibility, responsive/adaptive behavior, and state semantics.
-- **Wardveil Security** — exposure risk, route/listener conflicts, TLS/certificate/backend findings, security headers, configuration integrity, and evidence-backed protection state.
+- **GoreeCloud Manager** — bounded administration, lifecycle, operational visibility, approvals, remediation, and management-plane presentation.
 - **Privacy Shield** — minimal logging, redaction, sensitive-header protection, retention controls, client-information minimization, privacy-safe metrics, and truthful privacy evidence.
+- **Wardveil Security** — exposure risk, route/listener conflicts, TLS/certificate/backend findings, security headers, configuration integrity, and evidence-backed protection state.
 - **Everkeep** — configuration snapshots, route/configuration history, export/import, backup/restore, known-good retention, rollback, disaster recovery, and migration portability.
+- **Glaze UI** — administrative presentation, interaction, accessibility, responsive/adaptive behavior, and state semantics.
 - **GoreeCloud Mesh** — governed cross-service coordination where required.
 - **GoreeCloud Identity** — approved administrative identity/authentication; Gateway must not become a competing identity authority.
-- **GoreeCloud governance** — explicit publication and production-cutover approval boundaries.
+- **GoreeCloud Policy** — policy representation, decisions, version/freshness, enforcement coordination, explanation, and evidence while Gateway retains authority for Gateway-owned routing/publication rules.
+- **GoreeCloud Observability** — operational health, metrics, logs/events, diagnostics, performance, availability, dependency health, freshness, provenance, and operational evidence.
 
-No platform name or badge counts as implemented integration evidence by itself.
+GoreeCloud governance separately controls publication and production-cutover approval boundaries. No platform name, badge, metadata field, or documentation-only reference counts as implemented integration evidence by itself.
 
 ## 11. Security and privacy requirements
 

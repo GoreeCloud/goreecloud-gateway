@@ -1,4 +1,4 @@
-schema_version: '0.2'
+schema_version: "0.4"
 
 component:
   type: service
@@ -23,7 +23,7 @@ platform_systems:
     evidence:
       - README.md
       - SPECIFICATIONS.md
-    notes: Manager operational visibility is applicable, but no accepted Manager integration exists on the authoritative default branch.
+    notes: Manager operational visibility and lifecycle administration are applicable, but no accepted Manager integration exists for this Development candidate.
   privacy_shield:
     result: applicable-blocked
     version: null
@@ -37,28 +37,30 @@ platform_systems:
     evidence:
       - README.md
       - SPECIFICATIONS.md
-    notes: Exposure, listener, route, TLS, certificate, backend, and configuration-integrity security integration remains acceptance-gated.
+      - docs/security/request-header-policy.md
+    notes: The Development candidate contains fail-closed forwarding-identity controls and other security foundations, but Wardveil Security integration and target-environment acceptance remain incomplete.
   everkeep:
     result: applicable-blocked
     version: null
     evidence:
       - README.md
       - SPECIFICATIONS.md
-    notes: Configuration backup, restore, known-good retention, rollback, and disaster-recovery acceptance are required but not accepted on the default branch.
+      - docs/recovery.md
+    notes: Native configuration snapshot, restore, and rollback primitives exist in Development, but Everkeep integration and production-representative recovery acceptance remain incomplete.
   glaze_ui:
     result: applicable-blocked
     version: null
     evidence:
       - README.md
       - SPECIFICATIONS.md
-    notes: An administrative Glaze UI application is required, but the accepted default branch is currently governance, licensing, and branding foundation rather than the full native Gateway runtime or administration application.
+    notes: The Gateway administration console is applicable and current Stable Glaze UI 1.6.0 is required. Live Glaze lifecycle authority records accepted release source a7180679ea851389e0f3004515f9a25f420e716d, but no accepted Glaze UI administration application exists for this Gateway candidate.
   mesh:
     result: applicable-blocked
     version: null
     evidence:
       - README.md
       - SPECIFICATIONS.md
-    notes: Governed cross-service coordination is applicable where required, but no accepted Mesh runtime integration exists on the default branch.
+    notes: Governed cross-service discovery and coordination are applicable where required, but no accepted GoreeCloud Mesh runtime integration exists for this candidate.
     capabilities: []
     dependencies: []
     published_events: []
@@ -69,7 +71,21 @@ platform_systems:
     evidence:
       - README.md
       - SPECIFICATIONS.md
-    notes: GoreeCloud Identity must own approved administrative identity and authentication; no accepted Gateway Identity integration exists on the default branch.
+    notes: GoreeCloud Identity must own approved administrative identity and authentication; no accepted Gateway Identity integration exists for this candidate.
+  policy:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - README.md
+      - SPECIFICATIONS.md
+    notes: Gateway route, exposure, TLS, forwarding-trust, and administrative decisions require governed Policy integration, but no accepted GoreeCloud Policy decision or enforcement integration exists for this candidate.
+  observability:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - README.md
+      - SPECIFICATIONS.md
+    notes: Operational health, privacy-minimized metrics, diagnostics, dependency health, freshness, and provenance are applicable, but no accepted GoreeCloud Observability integration exists for this candidate.
 
 health:
   health_endpoint: null
@@ -98,10 +114,11 @@ continuity:
 external_dependencies: []
 
 compatibility:
-  platform_contract: '0.2'
-  glaze_ui_required: '1.1.0'
+  platform_contract: "0.4"
+  glaze_ui_required: "1.6.0"
   requires:
-    - goreecloud-platform-contract==0.2
+    - goreecloud-platform-contract==0.4
+    - glaze-ui==1.6.0
   provides: []
 
 evidence:
@@ -116,14 +133,16 @@ conformance:
     - SPECIFICATIONS.md
     - FEATURES.md
   blockers:
-    - The accepted default branch does not contain the full native Gateway runtime or administrative application; executable development remains in separately governed draft pull requests.
+    - The native Gateway runtime remains an unmerged Development candidate and has not been accepted as production authority.
     - Caddy remains production-authoritative and no production listener-ownership transfer or cutover is authorized.
     - GoreeCloud Manager integration and acceptance are incomplete.
     - Privacy Shield integration and acceptance are incomplete.
-    - Wardveil Security integration and acceptance are incomplete.
-    - Everkeep backup, restore, recovery, and rollback acceptance are incomplete.
-    - Current Stable Glaze UI 1.1.0 administration implementation and acceptance are incomplete.
+    - Wardveil Security integration and target-environment security acceptance are incomplete.
+    - Everkeep integration and production-representative backup, restore, recovery, and rollback acceptance are incomplete.
+    - Current Stable Glaze UI 1.6.0 administration implementation and application acceptance are incomplete.
     - GoreeCloud Mesh integration and acceptance are incomplete.
     - GoreeCloud Identity integration and acceptance are incomplete.
-    - Exact-artifact target-environment migration, recovery, rollback, and production-acceptance evidence is incomplete.
+    - GoreeCloud Policy decision, enforcement, and evidence acceptance are incomplete.
+    - GoreeCloud Observability health, telemetry, diagnostics, freshness, and evidence acceptance are incomplete.
+    - Exact-artifact target-VPS Caddy parity, certificate, listener, WebSocket or upgrade, load, recovery, rollback, and production-acceptance evidence is incomplete.
     - No Stable or production-approved Gateway release evidence is declared.
