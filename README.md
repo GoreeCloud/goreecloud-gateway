@@ -67,8 +67,11 @@ This repository maintains the required root records:
 - `BENEFITS.md`
 - `COMPETITIVE-OBJECTIVES.md`
 - `BRANDING.md`
+- `IMPLEMENTED-FEATURES.md`
+- `PLANNED-FEATURES.md`
+- `CHANGELOGS.md`
 
-The authoritative project record is `GoreeCloud/Projects/Project Specification — Gateway`; chronological implementation evidence is recorded in `GoreeCloud/Changelogs/Change Log — Gateway`.
+GitHub is authoritative for source, pull requests, exact revisions, workflow evidence, and repository history. `IMPLEMENTED-FEATURES.md` and `PLANNED-FEATURES.md` are the Git-native feature-state authorities, and `CHANGELOGS.md` is the repository-local chronological change record. The retired `FEATURE-ROADMAP.md` / Drive roadmap synchronization model must not be recreated. GoreeCloud Tasks Management remains authoritative for durable cross-repository operational obligations.
 
 ## License
 
