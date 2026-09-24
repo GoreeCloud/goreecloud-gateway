@@ -3,8 +3,8 @@
 ## Current stabilization context
 
 - Lifecycle remains Development / nonconformant. Caddy remains the production-authoritative public HTTP/HTTPS gateway; no listener ownership, DNS, firewall, certificate, Docker, or production publication authority has moved to GoreeCloud Gateway.
-- Draft PR #9 is the active native Gateway/Caddy-replacement source candidate. It contains the native routing/control-plane foundation, trusted-proxy and forwarding-identity enforcement, bounded recovery/rollback primitives, certificate/ACME development boundaries, and the read-only target-Caddy preflight collector.
-- The candidate is declared against Platform Contract 0.4 and all nine Integral Platform Systems. Current Official Stable GLAZE UI V1.6 / 1.6.0 is required for the future administration experience; no accepted Gateway administration UI exists yet.
+- PR #9 is integrated into `main` as Development source. The integrated source contains the native routing/control-plane foundation, trusted-proxy and forwarding-identity enforcement, bounded recovery/rollback primitives, certificate/ACME development boundaries, and the read-only target-Caddy preflight collector.
+- The integrated Development source is declared against Platform Contract 0.4 and all nine Integral Platform Systems. Current Official Stable GLAZE UI V1.6 / 1.6.0 is required for the future administration experience; no accepted Gateway administration UI exists yet.
 - Repository CI, isolated runtime tests, load tests, vulnerability reachability, and source recovery tests are Development evidence only. They do not establish target-VPS parity, production deployment, Release Candidate, Production Acceptance, or Stable status.
 
 ## Active Caddy-replacement gates
