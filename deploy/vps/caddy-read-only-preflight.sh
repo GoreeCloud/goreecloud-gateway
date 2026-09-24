@@ -42,6 +42,11 @@ hosts = set()
 upstreams = set()
 handlers = set()
 
+def safe_line(value):
+    # Preserve ordinary readable values while preventing embedded control characters or
+    # backslashes/quotes from breaking the line-oriented evidence format.
+    return json.dumps(str(value), ensure_ascii=True)[1:-1]
+
 def as_values(value):
     if isinstance(value, list):
         return [str(x) for x in value if isinstance(x, (str, int, float))]
@@ -99,32 +104,32 @@ def walk_routes(server_name, routes, inherited=None):
 print(f"http_server_count={len(servers)}")
 for name in sorted(servers):
     server = servers[name]
-    print(f"http_server={name}")
+    print("http_server=" + safe_line(name))
     if not isinstance(server, dict):
         continue
     listeners = server.get("listen", [])
     if isinstance(listeners, list):
         for listener in sorted(x for x in listeners if isinstance(x, str)):
-            print(f"http_listen={listener}")
+            print("http_listen=" + safe_line(listener))
     walk_routes(name, server.get("routes", []), {})
 
 print(f"sanitized_route_record_count={len(route_rows)}")
 for index, row in enumerate(route_rows, 1):
     prefix = f"route_record[{index:03d}]"
-    print(prefix + ".server=" + row["server"])
-    print(prefix + ".hosts=" + ";".join(row["hosts"]))
-    print(prefix + ".paths=" + ";".join(row["paths"]))
-    print(prefix + ".methods=" + ";".join(row["methods"]))
-    print(prefix + ".protocols=" + ";".join(row["protocols"]))
-    print(prefix + ".handler=" + row["handler"])
-    print(prefix + ".upstreams=" + ";".join(row["upstreams"]))
+    print(prefix + ".server=" + safe_line(row["server"]))
+    print(prefix + ".hosts=" + ";".join(safe_line(value) for value in row["hosts"]))
+    print(prefix + ".paths=" + ";".join(safe_line(value) for value in row["paths"]))
+    print(prefix + ".methods=" + ";".join(safe_line(value) for value in row["methods"]))
+    print(prefix + ".protocols=" + ";".join(safe_line(value) for value in row["protocols"]))
+    print(prefix + ".handler=" + safe_line(row["handler"]))
+    print(prefix + ".upstreams=" + ";".join(safe_line(value) for value in row["upstreams"]))
 
 for host in sorted(hosts):
-    print(f"route_host={host}")
+    print("route_host=" + safe_line(host))
 for upstream in sorted(upstreams):
-    print(f"upstream_dial={upstream}")
+    print("upstream_dial=" + safe_line(upstream))
 for handler in sorted(handlers):
-    print(f"http_handler={handler}")
+    print("http_handler=" + safe_line(handler))
 
 tls = apps.get("tls", {}) if isinstance(apps, dict) else {}
 automation = tls.get("automation", {}) if isinstance(tls, dict) else {}
@@ -138,7 +143,7 @@ for policy in policies:
     subjects = policy.get("subjects", [])
     if isinstance(subjects, list):
         for subject in sorted(x for x in subjects if isinstance(x, str)):
-            print(f"tls_subject={subject}")
+            print("tls_subject=" + safe_line(subject))
     issuers = policy.get("issuers", [])
     if isinstance(issuers, list):
         for issuer in issuers:
@@ -146,20 +151,20 @@ for policy in policies:
                 continue
             module = issuer.get("module")
             if isinstance(module, str):
-                print(f"tls_issuer_module={module}")
+                print("tls_issuer_module=" + safe_line(module))
             challenges = issuer.get("challenges", {})
             dns = challenges.get("dns", {}) if isinstance(challenges, dict) else {}
             provider = dns.get("provider", {}) if isinstance(dns, dict) else {}
             if isinstance(provider, dict):
                 provider_name = provider.get("name")
                 if isinstance(provider_name, str):
-                    print(f"tls_dns_provider={provider_name}")
+                    print("tls_dns_provider=" + safe_line(provider_name))
 '
 }
 
 self_test() {
   local sample output
-  sample='{"apps":{"http":{"servers":{"srv0":{"listen":[":80",":443"],"routes":[{"match":[{"host":["example.goreecloud.test"]}],"handle":[{"handler":"reverse_proxy","upstreams":[{"dial":"backend:8080"}]}]}]}}},"tls":{"automation":{"policies":[{"subjects":["example.goreecloud.test"],"issuers":[{"module":"acme","challenges":{"dns":{"provider":{"name":"porkbun","api_key":"SELF_TEST_SECRET"}}}}]}]}}}}'
+  sample='{"apps":{"http":{"servers":{"srv0":{"listen":[":80",":443"],"routes":[{"match":[{"host":["example.goreecloud.test","evil\\nforged_status=accepted"]}],"handle":[{"handler":"reverse_proxy","upstreams":[{"dial":"backend:8080"},{"dial":"backend\\tforged:9090"}]}]}]}}},"tls":{"automation":{"policies":[{"subjects":["example.goreecloud.test"],"issuers":[{"module":"acme","challenges":{"dns":{"provider":{"name":"porkbun","api_key":"SELF_TEST_SECRET"}}}}]}]}}}}'
   output="$(printf '%s' "$sample" | sanitize_caddy_json)"
   grep -qx 'adapted_config_status=parsed' <<<"$output"
   grep -qx 'route_host=example.goreecloud.test' <<<"$output"
@@ -168,6 +173,12 @@ self_test() {
   grep -qx 'route_record[001].handler=reverse_proxy' <<<"$output"
   grep -qx 'route_record[001].upstreams=backend:8080' <<<"$output"
   grep -qx 'tls_dns_provider=porkbun' <<<"$output"
+  grep -Fqx 'route_host=evil\nforged_status=accepted' <<<"$output"
+  grep -Fqx 'upstream_dial=backend\tforged:9090' <<<"$output"
+  if grep -qx 'forged_status=accepted' <<<"$output"; then
+    echo "self_test=failed-line-injection"
+    return 1
+  fi
   if grep -q 'SELF_TEST_SECRET' <<<"$output"; then
     echo "self_test=failed-secret-leak"
     return 1
