@@ -11,9 +11,9 @@ Status vocabulary: **Accepted main**, **Validated development candidate**, **Pla
 | Caddy-authoritative migration boundary | Accepted main | Documentation explicitly keeps production publication on Caddy until cutover approval. |
 | Current repository governance and Git-native feature/change records | Accepted main after governance integration | Documentation/governance only; does not grant runtime or production authority. |
 
-## Native development candidates
+## Integrated Development source
 
-Separate draft pull requests contain executable Gateway work. Current development evidence includes or targets:
+Accepted `main` now contains the PR #9 Development source foundation, including:
 
 - first-party Go Gateway runtime/control-plane slices;
 - deterministic routing and backend selection;
@@ -41,7 +41,7 @@ Separate draft pull requests contain executable Gateway work. Current developmen
 - privacy-minimized status/evidence outputs;
 - platform-system acceptance gates for GoreeCloud Manager, Privacy Shield, Wardveil Security, Everkeep, Glaze UI, GoreeCloud Mesh, GoreeCloud Identity, GoreeCloud Policy, and GoreeCloud Observability, with governance remaining separately authoritative for publication/cutover approval.
 
-These are **Validated development candidate** capabilities only. Exact candidate revisions and workflow runs are authoritative in GitHub pull-request/workflow evidence; they are not duplicated here as moving pre-merge identifiers. They are not accepted `main` behavior until their own review/merge gates are satisfied.
+These capabilities are integrated on `main` as **Development source**. Exact merge and workflow evidence is authoritative in GitHub; this does not establish target-VPS parity, deployment, production listener authority, Production Acceptance, or Stable status.
 
 ## Planned capabilities
 
