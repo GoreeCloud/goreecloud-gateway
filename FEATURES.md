@@ -1,6 +1,6 @@
 # GoreeCloud Gateway Features
 
-Status vocabulary: **Accepted main**, **Validated development candidate**, **Planned**, or **Blocked by prerequisite**. Candidate or isolated-runtime evidence is not production-cutover authority.
+Status vocabulary: **Accepted main**, **Validated development candidate**, **Planned**, or **Blocked by prerequisite**. Candidate or isolated-runtime evidence is not production-cutover authority. Detailed implemented state is authoritative in `IMPLEMENTED-FEATURES.md`; remaining work is authoritative in `PLANNED-FEATURES.md`; chronological repository change history is authoritative in `CHANGELOGS.md`.
 
 ## Accepted main
 
@@ -9,7 +9,7 @@ Status vocabulary: **Accepted main**, **Validated development candidate**, **Pla
 | GoreeCloud Gateway product identity | Accepted main | Canonical branding consumer contract and local synchronized artwork exist. |
 | GNU AGPL v3 repository license material | Accepted main | Root `LICENSE`; third-party dependencies retain separate terms. |
 | Caddy-authoritative migration boundary | Accepted main | Documentation explicitly keeps production publication on Caddy until cutover approval. |
-| Six mandatory repository governance records | Accepted main after this governance change | Documentation/governance only; does not merge runtime development. |
+| Current repository governance and Git-native feature/change records | Accepted main after governance integration | Documentation/governance only; does not grant runtime or production authority. |
 
 ## Native development candidates
 
@@ -41,7 +41,7 @@ Separate draft pull requests contain executable Gateway work. Current developmen
 - privacy-minimized status/evidence outputs;
 - platform-system acceptance gates for GoreeCloud Manager, Privacy Shield, Wardveil Security, Everkeep, Glaze UI, GoreeCloud Mesh, GoreeCloud Identity, GoreeCloud Policy, and GoreeCloud Observability, with governance remaining separately authoritative for publication/cutover approval.
 
-These are **Validated development candidate** capabilities only at the exact heads/workflow runs documented in the authoritative Gateway project specification and changelog. They are not accepted `main` behavior until their own PR review/merge gates are satisfied.
+These are **Validated development candidate** capabilities only. Exact candidate revisions and workflow runs are authoritative in GitHub pull-request/workflow evidence; they are not duplicated here as moving pre-merge identifiers. They are not accepted `main` behavior until their own review/merge gates are satisfied.
 
 ## Planned capabilities
 
