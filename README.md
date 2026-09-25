@@ -62,7 +62,8 @@ See [BRANDING.md](BRANDING.md).
 This repository maintains the required root records:
 
 - `README.md`
-- `SPECIFICATIONS.md`
+- `PROJECT-SPECIFICATIONS.md`
+- `PROJECT-RECORD.md`
 - `FEATURES.md`
 - `BENEFITS.md`
 - `COMPETITIVE-OBJECTIVES.md`
@@ -71,7 +72,7 @@ This repository maintains the required root records:
 - `PLANNED-FEATURES.md`
 - `CHANGELOGS.md`
 
-GitHub is authoritative for source, pull requests, exact revisions, workflow evidence, and repository history. `IMPLEMENTED-FEATURES.md` and `PLANNED-FEATURES.md` are the Git-native feature-state authorities, and `CHANGELOGS.md` is the repository-local chronological change record. The retired `FEATURE-ROADMAP.md` / Drive roadmap synchronization model must not be recreated. GoreeCloud Tasks Management remains authoritative for durable cross-repository operational obligations.
+GitHub is authoritative for source, pull requests, exact revisions, workflow evidence, repository history, project specifications, and the project record. `IMPLEMENTED-FEATURES.md` and `PLANNED-FEATURES.md` are the Git-native feature-state authorities, and `CHANGELOGS.md` is the repository-local chronological change record. The retired `FEATURE-ROADMAP.md` / Drive roadmap synchronization model must not be recreated. GoreeCloud Tasks Management remains authoritative for durable cross-repository operational obligations.
 
 ## License
 
