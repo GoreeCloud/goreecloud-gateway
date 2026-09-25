@@ -22,21 +22,21 @@ platform_systems:
     version: null
     evidence:
       - README.md
-      - SPECIFICATIONS.md
+      - PROJECT-SPECIFICATIONS.md
     notes: Manager operational visibility and lifecycle administration are applicable, but no accepted Manager integration exists for this Development candidate.
   privacy_shield:
     result: applicable-blocked
     version: null
     evidence:
       - README.md
-      - SPECIFICATIONS.md
+      - PROJECT-SPECIFICATIONS.md
     notes: Privacy-minimized logging and evidence are required for Stable qualification, but Privacy Shield integration and runtime acceptance remain incomplete.
   wardveil_security:
     result: applicable-blocked
     version: null
     evidence:
       - README.md
-      - SPECIFICATIONS.md
+      - PROJECT-SPECIFICATIONS.md
       - docs/security/request-header-policy.md
     notes: The Development candidate contains fail-closed forwarding-identity controls and other security foundations, but Wardveil Security integration and target-environment acceptance remain incomplete.
   everkeep:
@@ -44,7 +44,7 @@ platform_systems:
     version: null
     evidence:
       - README.md
-      - SPECIFICATIONS.md
+      - PROJECT-SPECIFICATIONS.md
       - docs/recovery.md
     notes: Native configuration snapshot, restore, and rollback primitives exist in Development, but Everkeep integration and production-representative recovery acceptance remain incomplete.
   glaze_ui:
@@ -52,14 +52,14 @@ platform_systems:
     version: null
     evidence:
       - README.md
-      - SPECIFICATIONS.md
+      - PROJECT-SPECIFICATIONS.md
     notes: The Gateway administration console is applicable and current Stable Glaze UI 1.6.0 is required. Live Glaze lifecycle authority records accepted release source a7180679ea851389e0f3004515f9a25f420e716d, but no accepted Glaze UI administration application exists for this Gateway candidate.
   mesh:
     result: applicable-blocked
     version: null
     evidence:
       - README.md
-      - SPECIFICATIONS.md
+      - PROJECT-SPECIFICATIONS.md
     notes: Governed cross-service discovery and coordination are applicable where required, but no accepted GoreeCloud Mesh runtime integration exists for this candidate.
     capabilities: []
     dependencies: []
@@ -70,21 +70,21 @@ platform_systems:
     version: null
     evidence:
       - README.md
-      - SPECIFICATIONS.md
+      - PROJECT-SPECIFICATIONS.md
     notes: GoreeCloud Identity must own approved administrative identity and authentication; no accepted Gateway Identity integration exists for this candidate.
   policy:
     result: applicable-blocked
     version: null
     evidence:
       - README.md
-      - SPECIFICATIONS.md
+      - PROJECT-SPECIFICATIONS.md
     notes: Gateway route, exposure, TLS, forwarding-trust, and administrative decisions require governed Policy integration, but no accepted GoreeCloud Policy decision or enforcement integration exists for this candidate.
   observability:
     result: applicable-blocked
     version: null
     evidence:
       - README.md
-      - SPECIFICATIONS.md
+      - PROJECT-SPECIFICATIONS.md
     notes: Operational health, privacy-minimized metrics, diagnostics, dependency health, freshness, and provenance are applicable, but no accepted GoreeCloud Observability integration exists for this candidate.
 
 health:
@@ -130,7 +130,7 @@ conformance:
   validated_at: null
   evidence:
     - README.md
-    - SPECIFICATIONS.md
+    - PROJECT-SPECIFICATIONS.md
     - FEATURES.md
   blockers:
     - The native Gateway runtime remains an unmerged Development candidate and has not been accepted as production authority.
