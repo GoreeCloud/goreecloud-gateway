@@ -2,7 +2,7 @@
 
 **Repository:** `GoreeCloud/goreecloud-gateway`  
 **Project type:** First-party infrastructure application and service  
-**Lifecycle:** Active Development; Caddy remains production-authoritative  
+**Repository lifecycle declaration (legacy Contract 0.4):** `development`; canonical Contract 2.0 lifecycle reclassification remains pending and must be evidence-backed; Caddy remains production-authoritative  
 **Migration baseline:** `da5dc01ba8bcee6236b2fa7da587022ed6c967d8`  
 **License:** GNU AGPL-3.0 for GoreeCloud-owned source unless otherwise noted  
 **Canonical authority:** This file becomes the authoritative project specification once accepted on the default branch.
