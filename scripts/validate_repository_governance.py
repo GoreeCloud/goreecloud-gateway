@@ -10,7 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 REQUIRED_RECORDS = {
     "README.md": "# GoreeCloud Gateway",
-    "SPECIFICATIONS.md": "# GoreeCloud Gateway Specifications",
+    "PROJECT-SPECIFICATIONS.md": "# GoreeCloud Gateway — Project Specifications",
+    "PROJECT-RECORD.md": "# GoreeCloud Gateway — Project Record",
     "FEATURES.md": "# GoreeCloud Gateway Features",
     "BENEFITS.md": "# GoreeCloud Gateway Benefits",
     "COMPETITIVE-OBJECTIVES.md": "# GoreeCloud Gateway Competitive Objectives",
@@ -22,6 +23,7 @@ REQUIRED_RECORDS = {
 
 RETIRED_RECORDS = (
     "FEATURE-ROADMAP.md",
+    "SPECIFICATIONS.md",
 )
 
 LICENSE_MARKERS = (
@@ -73,7 +75,7 @@ def main() -> int:
         return 1
 
     print(
-        "GoreeCloud Gateway repository governance validation passed: all nine mandatory root records, "
+        "GoreeCloud Gateway repository governance validation passed: mandatory root governance records, "
         "Git-native feature/change authorities, retirement guards, and explicit AGPL-3.0 license material "
         "are structurally valid."
     )
